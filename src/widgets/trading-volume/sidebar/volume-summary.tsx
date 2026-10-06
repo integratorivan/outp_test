@@ -1,7 +1,18 @@
 import { Info } from 'lucide-react'
 import { useId } from 'react'
 
-import { formatDaysCount, formatDaysDative, formatShare, formatUsdFull, formatUsdSummary, formatVolumeChange } from '../../../entities/volume/lib/format'
+import {
+  formatAvailableDays,
+  formatChangeBasisFootnote,
+  formatCommonDaysBasis,
+  formatDaysCount,
+  formatDaysDative,
+  formatMissingDaysLabel,
+  formatShare,
+  formatUsdFull,
+  formatUsdSummary,
+  formatVolumeChange,
+} from '../../../entities/volume/lib/format'
 import type { Platform } from '../../../entities/volume/model'
 import type { PlatformVolumeSummary } from '../../../entities/volume/select/summary'
 import { Button } from '../../../shared/ui/button'
@@ -47,14 +58,12 @@ export function VolumeSummary({
         platform="polymarket"
         summary={dashboard.summary.polymarket}
         loading={dashboard.isLoading}
-        granularity={dashboard.summaryGranularity}
         period={dashboard.summaryPeriod}
       />
       <VolumeSummaryCard
         platform="kalshi"
         summary={dashboard.summary.kalshi}
         loading={dashboard.isLoading}
-        granularity={dashboard.summaryGranularity}
         period={dashboard.summaryPeriod}
       />
     </section>
@@ -65,18 +74,18 @@ function VolumeSummaryCard({
   platform,
   summary,
   loading,
-  granularity,
   period,
 }: {
   platform: Platform
   summary: PlatformVolumeSummary
   loading: boolean
-  granularity: 'day' | 'week'
   period: { days: number; full: boolean } | null
 }) {
   const titleId = useId()
   const partial =
     summary.availablePoints < summary.expectedPoints && summary.total !== null
+  const missingLabel = formatMissingDaysLabel(summary.missingDays)
+  const changeBasisFootnote = formatChangeBasisFootnote(summary.changeBasisDays, summary.availablePoints)
   const shareLabel = summary.share === null
     ? 'Доля общего оборота недоступна'
     : `${formatShare(summary.share)} всего оборота`
@@ -124,7 +133,7 @@ function VolumeSummaryCard({
                   <PopoverDescription>
                     {sourceDescriptions[platform]}
                     {partial &&
-                      ` Доступно ${summary.availablePoints} из ${summary.expectedPoints} ${granularity === 'week' ? 'недельных' : 'дневных'} точек; пропуски не считаются нулём.`}
+                      ` ${formatAvailableDays(summary.availablePoints, summary.expectedPoints)}; ${missingLabel ?? 'пропуски не считаются нулём'}.`}
                   </PopoverDescription>
                 </PopoverHeader>
               </PopoverContent>
@@ -149,33 +158,42 @@ function VolumeSummaryCard({
                 {summary.total === null ? '—' : formatUsdSummary(summary.total)}
               </p>
             )}
-            {!loading && (partial || summary.total === null) && (
+            {!loading && partial && (
               <span className="text-[11px] leading-4 text-muted-foreground">
-                {partial ? 'Неполный период' : 'Нет данных'}
+                {formatAvailableDays(summary.availablePoints, summary.expectedPoints)}
+                {missingLabel && <>, {missingLabel}</>}
               </span>
+            )}
+            {!loading && summary.total === null && (
+              <span className="text-[11px] leading-4 text-muted-foreground">Нет данных</span>
             )}
             {period !== null && !period.full && (loading ? (
               <Skeleton className="h-4 w-36 max-w-full" aria-label="Загрузка сравнения" />
             ) : (
-              <p
-                title={
-                  summary.change === null
-                    ? 'Нужно полное покрытие обоих периодов и ненулевой оборот в предыдущем периоде.'
-                    : `${formatVolumeChange(summary.change)} к ${formatDaysDative(period.days)}`
-                }
-                className={cn(
-                  'truncate text-[11px] leading-4 text-muted-foreground',
-                  summary.change !== null && summary.change > 0 && 'text-positive',
-                  summary.change !== null && summary.change < 0 && 'text-destructive',
+              <div className="flex min-w-0 flex-col gap-0.5">
+                <p
+                  title={
+                    summary.change === null
+                      ? 'Нужен хотя бы один день с данными за прошлый период и ненулевой оборот в нём.'
+                      : `${formatVolumeChange(summary.change)} к ${formatDaysDative(period.days)}`
+                  }
+                  className={cn(
+                    'truncate text-[11px] leading-4 text-muted-foreground',
+                    summary.change !== null && summary.change > 0 && 'text-positive',
+                    summary.change !== null && summary.change < 0 && 'text-destructive',
+                  )}
+                >
+                  {summary.change === null ? 'Сравнение недоступно' : (
+                    <>
+                      <span className="font-mono tabular-nums">{formatVolumeChange(summary.change)}</span>
+                      {' к '}{formatDaysDative(period.days)}
+                    </>
+                  )}
+                </p>
+                {summary.change !== null && changeBasisFootnote && (
+                  <span className="text-[11px] leading-4 text-muted-foreground">{changeBasisFootnote}</span>
                 )}
-              >
-                {summary.change === null ? 'Сравнение недоступно' : (
-                  <>
-                    <span className="font-mono tabular-nums">{formatVolumeChange(summary.change)}</span>
-                    {' к '}{formatDaysDative(period.days)}
-                  </>
-                )}
-              </p>
+              </div>
             ))}
           </div>
           {loading ? (
@@ -188,13 +206,18 @@ function VolumeSummaryCard({
                 )}
               </p>
               {summary.share !== null && (
-                <Progress
-                  role="meter"
-                  value={summary.share * 100}
-                  aria-label={`Доля общего оборота ${labels[platform]}`}
-                  aria-valuetext={shareLabel}
-                  className="h-1"
-                />
+                <>
+                  <span className="text-[11px] leading-4 text-muted-foreground">
+                    {formatCommonDaysBasis(summary.shareBasisDays)}
+                  </span>
+                  <Progress
+                    role="meter"
+                    value={summary.share * 100}
+                    aria-label={`Доля общего оборота ${labels[platform]}`}
+                    aria-valuetext={shareLabel}
+                    className="h-1"
+                  />
+                </>
               )}
             </div>
           )}

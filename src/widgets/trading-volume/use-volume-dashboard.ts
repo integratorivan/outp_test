@@ -92,7 +92,9 @@ export function useVolumeDashboard(
     categoryPeriod: categoryChart.period,
     summary,
     summaryGranularity: summarySelection.granularity,
-    summaryPeriod: summaryWindow ? { days: windowDays(summaryWindow), full: fullHistory } : null,
+    summaryPeriod: summaryWindow
+      ? { days: windowDays(summaryWindow), full: fullHistory, previous: previousSummarySelection.period }
+      : null,
     orderedCategories,
     categoryBreakdown,
     isLoading: !kalshi.data && !polymarket.data && (kalshi.isPending || polymarket.isPending),

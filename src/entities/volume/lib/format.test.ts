@@ -1,6 +1,20 @@
 import { describe, expect, it } from 'vitest'
 
-import { formatCompactPeriod, formatDateTick, formatPercent, formatShortPeriod, formatUsdCompact, formatUsdFull, formatUsdTick, formatUsdSummary, formatVolumeChange } from './format'
+import {
+  formatAvailableDays,
+  formatChangeBasisFootnote,
+  formatCommonDaysBasis,
+  formatCompactPeriod,
+  formatDateTick,
+  formatMissingDaysLabel,
+  formatPercent,
+  formatShortPeriod,
+  formatUsdCompact,
+  formatUsdFull,
+  formatUsdTick,
+  formatUsdSummary,
+  formatVolumeChange,
+} from './format'
 import { daySchema } from '../model'
 
 describe('chart axis formatting', () => {
@@ -54,9 +68,28 @@ describe('summary formatting', () => {
   })
 
   it('formats signed growth, decline and no change', () => {
-    expect(formatVolumeChange(0.12)).toBe('+12 %')
-    expect(formatVolumeChange(-0.05)).toBe('-5 %')
-    expect(formatVolumeChange(0)).toBe('0 %')
+    expect(formatVolumeChange(0.12)).toBe('+12%')
+    expect(formatVolumeChange(-0.05)).toBe('-5%')
+    expect(formatVolumeChange(-0.036)).toBe('-3.6%')
+    expect(formatVolumeChange(0)).toBe('0%')
+  })
+})
+
+describe('summary coverage formatting', () => {
+  it('formats available days and common-day basis with Russian plurals', () => {
+    expect(formatAvailableDays(17, 19)).toBe('17 из 19 дней')
+    expect(formatCommonDaysBasis(17)).toBe('по 17 общим дням')
+    expect(formatCommonDaysBasis(1)).toBe('по 1 общему дню')
+  })
+
+  it('collapses missing days into compact gap labels', () => {
+    expect(formatMissingDaysLabel([daySchema.parse('2026-10-03'), daySchema.parse('2026-10-04')])).toBe('нет данных 3–4 окт.')
+    expect(formatMissingDaysLabel([daySchema.parse('2024-02-29')])).toBe('нет данных 29 февр.')
+  })
+
+  it('formats change basis footnotes only when pairing is partial', () => {
+    expect(formatChangeBasisFootnote(17, 17)).toBeNull()
+    expect(formatChangeBasisFootnote(15, 17)).toBe('по 15 из 17 дней с прошлым периодом')
   })
 })
 
@@ -69,8 +102,9 @@ describe('category volume formatting', () => {
   })
 
   it('formats shares from ratios with one decimal at most', () => {
-    expect(formatPercent(0.521)).toBe('52,1\u00a0%')
-    expect(formatPercent(1)).toBe('100\u00a0%')
-    expect(formatPercent(0)).toBe('0\u00a0%')
+    expect(formatPercent(0.521)).toBe('52.1%')
+    expect(formatPercent(0.131)).toBe('13.1%')
+    expect(formatPercent(1)).toBe('100%')
+    expect(formatPercent(0)).toBe('0%')
   })
 })

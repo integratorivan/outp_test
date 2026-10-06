@@ -1,3 +1,4 @@
+import { shiftDay } from '../dashboard/dashboard'
 import type { Day } from '../model'
 
 const dateFormatter = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })
@@ -10,18 +11,14 @@ const fullUsdFormatter = new Intl.NumberFormat('en-US', { style: 'currency', cur
 const compactFormatter = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', notation: 'compact', minimumFractionDigits: 0, maximumFractionDigits: 1 })
 const compactPreciseFormatter = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', notation: 'compact', maximumFractionDigits: 2 })
 const summaryUsdFormatter = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', notation: 'compact', maximumSignificantDigits: 3 })
-const changeFormatter = new Intl.NumberFormat('ru-RU', { style: 'percent', maximumFractionDigits: 1, signDisplay: 'exceptZero' })
-const percentFormatter = new Intl.NumberFormat('ru-RU', { style: 'percent', maximumFractionDigits: 1 })
+const changeFormatter = new Intl.NumberFormat('en-US', { style: 'percent', maximumFractionDigits: 1, signDisplay: 'exceptZero' })
+const percentFormatter = new Intl.NumberFormat('en-US', { style: 'percent', maximumFractionDigits: 1 })
 const daysPlural = new Intl.PluralRules('ru-RU')
 const dayForms: Record<string, string> = { one: 'день', few: 'дня', many: 'дней' }
-const dayDativeForms: Record<string, string> = { one: 'дню', few: 'дням', many: 'дням' }
+const commonDayForms: Record<string, string> = { one: 'общему дню', few: 'общим дням', many: 'общим дням' }
 
 export function formatDaysCount(count: number) {
   return `${count} ${dayForms[daysPlural.select(count)] ?? 'дня'}`
-}
-
-export function formatDaysDative(count: number) {
-  return `${count} ${dayDativeForms[daysPlural.select(count)] ?? 'дням'}`
 }
 
 export function formatDay(day: Day) {
@@ -73,7 +70,7 @@ export function formatPercent(value: number) {
 }
 
 export function formatShare(value: number) {
-  return value > 0 && value < 0.001 ? '<0,1\u00a0%' : formatPercent(value)
+  return value > 0 && value < 0.001 ? '<0.1%' : formatPercent(value)
 }
 
 export function formatShortPeriod(start: Day, end: Day) {
@@ -93,4 +90,46 @@ export function formatPeriod(start: Day, end: Day) {
 export function formatCompactPeriod(start: Day, end: Day) {
   const first = compactDateFormatter.format(new Date(start))
   return start === end ? first : `${first} — ${compactDateFormatter.format(new Date(end))}`
+}
+
+function formatMissingRange(start: Day, end: Day) {
+  const first = new Date(start)
+  const last = new Date(end)
+  if (start === end) return tickFormatter.format(first)
+  if (first.getUTCFullYear() === last.getUTCFullYear() && first.getUTCMonth() === last.getUTCMonth()) {
+    return `${first.getUTCDate()}–${tickFormatter.format(last)}`
+  }
+  return `${tickFormatter.format(first)} — ${tickFormatter.format(last)}`
+}
+
+export function formatAvailableDays(available: number, expected: number) {
+  return `${available} из ${expected} ${dayForms[daysPlural.select(expected)] ?? 'дней'}`
+}
+
+export function formatMissingDaysLabel(missingDays: readonly Day[]) {
+  if (missingDays.length === 0) return null
+  const ranges: string[] = []
+  let start = missingDays[0]!
+  let end = start
+  for (let index = 1; index < missingDays.length; index++) {
+    const day = missingDays[index]!
+    if (shiftDay(end, 1) === day) {
+      end = day
+      continue
+    }
+    ranges.push(formatMissingRange(start, end))
+    start = day
+    end = day
+  }
+  ranges.push(formatMissingRange(start, end))
+  return `нет данных ${ranges.join(', ')}`
+}
+
+export function formatCommonDaysBasis(count: number) {
+  return `по ${count} ${commonDayForms[daysPlural.select(count)] ?? 'общим дням'}`
+}
+
+export function formatChangeBasisFootnote(changeBasisDays: number, availablePoints: number) {
+  if (changeBasisDays >= availablePoints) return null
+  return `по ${changeBasisDays} из ${availablePoints} ${dayForms[daysPlural.select(availablePoints)] ?? 'дней'} с прошлым периодом`
 }
