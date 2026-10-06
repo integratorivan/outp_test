@@ -294,7 +294,7 @@ function SeriesMarks({ series }: { series: ChartFrame['series'] }) {
             d={segment.positions.map((position, index) => `${index ? 'L' : 'M'}${position.x.toFixed(2)},${position.y.toFixed(2)}`).join(' ')}
             opacity={segment.opacity}
             stroke={colors[entry.platform]}
-            strokeWidth="2.5"
+            strokeWidth="1.5"
             fill="none"
             strokeLinejoin="round"
             strokeLinecap="round"

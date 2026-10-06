@@ -68,6 +68,7 @@ const sparkSkeletonPaths = [
   { d: 'M1 9 L7 11 L12 8 L18 10 L24 5 L30 8 L35 4 L41 7 L47 3', endY: 3 },
   { d: 'M1 5 L6 8 L11 6 L17 10 L22 7 L28 11 L33 8 L39 12 L47 9', endY: 9 },
   { d: 'M1 12 L7 10 L12 7 L18 9 L24 5 L29 7 L35 3 L41 6 L47 2', endY: 2 },
+  { d: 'M1 8 L6 11 L11 7 L17 10 L22 6 L28 9 L34 5 L40 8 L47 4', endY: 4 },
 ] as const
 const updateTransition = {
   type: 'tween',
@@ -77,11 +78,11 @@ const updateTransition = {
 const reducedMotionQuery = '(prefers-reduced-motion: reduce)'
 const skeletonLabelWidths = [
   'w-16', 'w-20', 'w-14', 'w-16', 'w-12', 'w-20',
-  'w-24', 'w-16', 'w-14', 'w-12', 'w-10',
+  'w-24', 'w-16', 'w-14', 'w-12', 'w-18', 'w-10',
 ] as const
 const skeletonAmountWidths = [
   'w-12', 'w-10', 'w-14', 'w-11', 'w-9', 'w-12',
-  'w-10', 'w-12', 'w-11', 'w-9', 'w-12',
+  'w-10', 'w-12', 'w-11', 'w-9', 'w-12', 'w-10',
 ] as const
 
 function subscribeReducedMotion(onChange: () => void) {

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { dashboardCategories, mapSourceCategory } from '../categories'
+import { dashboardCategoryLabels } from '../lib/labels'
 import { daySchema } from '../model'
 import { toDashboardRow, toSourceRow } from '../normalize'
 import { orderCategoriesByAllTimeVolume, selectCategoryBreakdown, selectCategoryChartPoints, selectChartPoints } from './selectors'
@@ -57,6 +58,8 @@ describe('volume taxonomy and selectors', () => {
     expect(source.sourceCategory).toBe('Climate and Weather')
     expect(toDashboardRow(source).category).toBe('weather')
     expect(mapSourceCategory('polymarket', 'weather')).toBe('weather')
+    expect(mapSourceCategory('kalshi', 'exotics')).toBe('combo')
+    expect(dashboardCategoryLabels.combo).toBe('Комбо-ставки')
     expect(mapSourceCategory('kalshi', 'mentions')).toBe('other')
   })
 
@@ -92,16 +95,19 @@ describe('volume taxonomy and selectors', () => {
     expect(selectChartPoints(rows, { categories: ['sports'], startDay: daySchema.parse('2027-01-01') })).toEqual([])
   })
 
-  it('aggregates all 11 mapped categories and ranks them by combined volume', () => {
+  it('aggregates all 12 mapped categories and ranks them by combined volume', () => {
     const before = structuredClone(rows)
     const result = selectCategoryBreakdown([...rows].reverse(), { startDay: first, endDay: second })
-    expect(result.rows).toHaveLength(11)
+    expect(result.rows).toHaveLength(12)
     expect(result.rows.slice(0, 2)).toEqual([
       { category: 'politics', kalshi: 30, polymarket: null, total: 30, share: 30 / 35 },
       { category: 'sports', kalshi: 0, polymarket: 5, total: 5, share: 5 / 35 },
     ])
     expect(result.rows.find((row) => row.category === 'crypto')).toEqual({
       category: 'crypto', kalshi: null, polymarket: null, total: null, share: null,
+    })
+    expect(result.rows.find((row) => row.category === 'combo')).toEqual({
+      category: 'combo', kalshi: null, polymarket: null, total: null, share: null,
     })
     expect(result.totals).toEqual({ kalshi: 30, polymarket: 5, total: 35 })
     expect(result.rows.reduce((sum, row) => sum + (row.share ?? 0), 0)).toBeCloseTo(1)

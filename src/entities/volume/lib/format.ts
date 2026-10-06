@@ -9,8 +9,7 @@ const periodDateFormatter = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', m
 const usdFormatter = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
 const fullUsdFormatter = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 2 })
 const compactFormatter = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', notation: 'compact', minimumFractionDigits: 0, maximumFractionDigits: 1 })
-const compactPreciseFormatter = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', notation: 'compact', maximumFractionDigits: 2 })
-const summaryUsdFormatter = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', notation: 'compact', maximumSignificantDigits: 3 })
+const compactUsdFormatter = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', notation: 'compact', maximumSignificantDigits: 3 })
 const changeFormatter = new Intl.NumberFormat('en-US', { style: 'percent', maximumFractionDigits: 1, signDisplay: 'exceptZero' })
 const percentFormatter = new Intl.NumberFormat('en-US', { style: 'percent', maximumFractionDigits: 1 })
 const daysPlural = new Intl.PluralRules('ru-RU')
@@ -54,11 +53,11 @@ export function formatUsdTick(value: number) {
 }
 
 export function formatUsdCompact(value: number) {
-  return compactPreciseFormatter.format(value)
+  return compactUsdFormatter.format(value)
 }
 
 export function formatUsdSummary(value: number) {
-  return summaryUsdFormatter.format(value)
+  return compactUsdFormatter.format(value)
 }
 
 export function formatVolumeChange(value: number) {

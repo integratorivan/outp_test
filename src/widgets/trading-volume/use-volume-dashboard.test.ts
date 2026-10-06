@@ -191,7 +191,11 @@ describe('dashboard KPI independence', () => {
   it('compares consecutive equally sized calendar periods with the same category filters', () => {
     withDashboardHistory(100, (render) => {
       const dashboard = render(defaults)
-      expect(dashboard.summaryPeriod).toEqual({ days: 30, full: false })
+      expect(dashboard.summaryPeriod).toEqual({
+        days: 30,
+        full: false,
+        previous: { startDay: '2026-02-10', endDay: '2026-03-11' },
+      })
       expect(dashboard.summary.kalshi.change).toBe(0)
       expect(dashboard.summary.polymarket.change).toBe(0)
       expect(render({ ...defaults, range: '7d' }).summary.polymarket.change).toBe(0)

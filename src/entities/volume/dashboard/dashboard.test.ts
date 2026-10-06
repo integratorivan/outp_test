@@ -257,7 +257,7 @@ describe('volume dashboard selection', () => {
     const rows = [...kalshi, ...polymarket]
     const result = select(rows, preset(rows, 'all'), dashboardCategories, 'week')
     expect(result.points.find((point) => point.day === '2026-03-16')).toEqual({
-      day: '2026-03-16', endDay: '2026-03-22', kalshi: 60, polymarket: 0, partial: true,
+      day: '2026-03-16', endDay: '2026-03-22', kalshi: 60, polymarket: 0, partial: true, partialPlatforms: ['kalshi'],
     })
     const gap = select(kalshi, preset(kalshi, 'all'), dashboardCategories, 'week')
     expect(gap.points.find((point) => point.day === '2026-03-16')).toMatchObject({ kalshi: 60, partial: true })
@@ -331,7 +331,7 @@ describe('volume dashboard selection', () => {
     const rows = history('2026-01-01', 181).filter((item) => item.day !== '2026-01-07')
     rows.push(...history('2026-01-01', 181).map((item) => ({ ...item, platform: 'polymarket' } satisfies DashboardVolumeRow)))
     const week = select(rows, preset(rows, 'all'), dashboardCategories, 'week').points.find((point) => point.day === '2026-01-05')
-    expect(week).toMatchObject({ kalshi: 60, polymarket: 70, partial: true })
+    expect(week).toMatchObject({ kalshi: 60, polymarket: 70, partial: true, partialPlatforms: ['kalshi'] })
   })
 
   it('keeps sparse trailing weeks instead of dropping them when mid-week days are missing', () => {
@@ -339,7 +339,7 @@ describe('volume dashboard selection', () => {
     const rows = days.flatMap((day) => [row(day, 'kalshi', 10), row(day, 'polymarket', 5)])
     const result = select(rows, preset(rows, 'all'), dashboardCategories, 'week')
     expect(result.points).toEqual([
-      { day: '2026-09-28', endDay: '2026-10-04', kalshi: 40, polymarket: 20, partial: true },
+      { day: '2026-09-28', endDay: '2026-10-04', kalshi: 40, polymarket: 20, partial: true, partialPlatforms: ['kalshi', 'polymarket'] },
       { day: '2026-10-05', endDay: '2026-10-05', kalshi: 10, polymarket: 5, incompleteWeek: true },
     ])
   })

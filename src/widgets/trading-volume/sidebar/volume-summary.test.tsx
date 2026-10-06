@@ -20,7 +20,11 @@ const completeDashboard: VolumeDashboard = {
     kalshi: { total: 300, share: 0.75, change: -0.05, availablePoints: 1, expectedPoints: 1, missingDays: [], commonDays: 1, shareBasisDays: 1, changeBasisDays: 1 },
   },
   summaryGranularity: 'day',
-  summaryPeriod: { days: 30, full: false, previous: null },
+  summaryPeriod: {
+    days: 30,
+    full: false,
+    previous: { startDay: daySchema.parse('2026-08-02'), endDay: daySchema.parse('2026-08-31') },
+  },
   window: null,
   bounds: null,
   historyPoints: [],
@@ -37,7 +41,7 @@ function renderSummary(dashboard: VolumeDashboard) {
 }
 
 describe('VolumeSummary', () => {
-  it('keeps amounts and shares in separate stat cards with platform hover accents', () => {
+  it('keeps the platform name, amount and delta in each card and the share on one bar', () => {
     const html = renderSummary(completeDashboard)
 
     expect(html).toContain('data-platform="polymarket"')
@@ -45,20 +49,22 @@ describe('VolumeSummary', () => {
     expect(html.match(/data-variant="stat"/g)).toHaveLength(2)
     expect(html).toContain('Polymarket</h2>')
     expect(html).toContain('Kalshi</h2>')
-    expect(html.match(/Оборот за 30 дней/g)).toHaveLength(2)
+    expect(html).not.toContain('Оборот за')
     expect(html).toContain('$100')
     expect(html).toContain('$300')
-    expect(html).toContain('25 % всего оборота')
-    expect(html).toContain('75 % всего оборота')
-    expect(html).toContain('по 1 общему дню')
-    expect(html.match(/role="meter"/g)).toHaveLength(2)
-    expect(html).toContain('aria-valuenow="25"')
-    expect(html).toContain('aria-valuenow="75"')
-    expect(html).toContain('+12 %')
-    expect(html).toContain('-5 %')
-    expect(html.match(/к 30 дням/g)?.length).toBeGreaterThanOrEqual(2)
+    expect(html).toContain('aria-label="Доля оборота: Polymarket 25%, Kalshi 75%"')
+    expect(html.match(/role="img"/g)).toHaveLength(1)
+    expect(html).not.toContain('всего оборота')
+    expect(html).not.toContain('role="meter"')
+    expect(html).toContain('+12%')
+    expect(html).toContain('-5%')
+    expect(html.match(/к пред\. периоду/g)).toHaveLength(2)
+    expect(html).toContain('К предыдущему периоду: 2–31 августа 2026')
+    expect(html).not.toMatch(/к \d+ дням/)
     expect(html).toContain('text-positive')
     expect(html).toContain('text-destructive')
+    expect(html).not.toContain('data-caveat')
+    expect(html).not.toContain('по 1 общему дню')
   })
 
   it('shows compact amounts with exact totals in titles', () => {
@@ -75,22 +81,19 @@ describe('VolumeSummary', () => {
     expect(html).toContain('title="$13,665,575,548"')
   })
 
-  it.each([[7, '7 дней', '7 дням'], [90, '90 дней', '90 дням']] as const)('labels the %s-day selected period and comparison consistently', (days, label, comparison) => {
-    const html = renderSummary({ ...completeDashboard, summaryPeriod: { days, full: false, previous: null } })
-    expect(html.match(new RegExp(`Оборот за ${label}`, 'g'))).toHaveLength(2)
-    expect(html.match(new RegExp(`к ${comparison}`, 'g'))?.length).toBeGreaterThanOrEqual(2)
-  })
-
-  it('labels a custom window by its length', () => {
-    const html = renderSummary({ ...completeDashboard, summaryPeriod: { days: 14, full: false, previous: null } })
-    expect(html.match(/Оборот за 14 дней/g)).toHaveLength(2)
-    expect(html.match(/к 14 дням/g)?.length).toBeGreaterThanOrEqual(2)
+  it.each([7, 14, 90])('names the previous window instead of “к %s дням”', (days) => {
+    const previous = completeDashboard.summaryPeriod?.previous ?? null
+    const html = renderSummary({ ...completeDashboard, summaryPeriod: { days, full: false, previous } })
+    expect(html.match(/к пред\. периоду/g)).toHaveLength(2)
+    expect(html).toContain('К предыдущему периоду: 2–31 августа 2026')
+    expect(html).not.toContain('Оборот за')
+    expect(html).not.toMatch(/к \d+ дням/)
   })
 
   it('does not compare all-time totals to an invented previous period', () => {
     const html = renderSummary({ ...completeDashboard, summaryPeriod: { days: 400, full: true, previous: null } })
-    expect(html.match(/Оборот за всё время/g)).toHaveLength(2)
-    expect(html).not.toMatch(/к \d+ дням/)
+    expect(html).not.toContain('Оборот за')
+    expect(html).not.toContain('к пред. периоду')
     expect(html).not.toContain('Сравнение недоступно')
   })
 
@@ -98,7 +101,9 @@ describe('VolumeSummary', () => {
     const html = renderSummary({ ...completeDashboard, summary: selectVolumeSummary([]) })
 
     expect(html.match(/Нет данных/g)).toHaveLength(2)
-    expect(html.match(/Доля общего оборота недоступна/g)).toHaveLength(2)
+    expect(html.match(/data-caveat="true"/g)).toHaveLength(2)
+    expect(html).not.toContain('Доля общего оборота недоступна')
+    expect(html).not.toContain('role="img"')
     expect(html).not.toContain('$0')
     expect(html).not.toContain('0.0%')
   })
@@ -114,10 +119,12 @@ describe('VolumeSummary', () => {
     expect(html).toContain('$300')
     expect(html).toContain('1 из 2 дня')
     expect(html).toContain('нет данных 3 окт.')
-    expect(html).toContain('80')
-    expect(html).toContain('20')
+    expect(html).toContain('aria-label="Доля оборота: Polymarket 20%, Kalshi 80%"')
     expect(html).toContain('по 1 общему дню')
+    expect(html.match(/data-caveat="true"/g)).toHaveLength(2)
     expect(html).not.toContain('Неполный период')
+    expect(html).not.toContain('всего оборота')
+    expect(html).not.toContain('2 из 2')
   })
 
   it('shows loading placeholders instead of stale amounts and shares', () => {

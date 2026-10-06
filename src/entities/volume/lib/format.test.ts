@@ -63,8 +63,20 @@ describe('summary formatting', () => {
   it.each([
     [2_161_633_016, '$2.16B'], [13_665_575_548, '$13.7B'],
     [2_161_633, '$2.16M'], [13_665, '$13.7K'], [100, '$100'], [0, '$0'],
+    [24_500_000_000, '$24.5B'], [593_720_000, '$594M'],
+    [939_000_000, '$939M'], [6_010_000, '$6.01M'],
   ])('formats %s with at most three significant digits as %s', (value, expected) => {
     expect(formatUsdSummary(value)).toBe(expected)
+  })
+
+  it('keeps compact and summary formatting identical', () => {
+    const values = [
+      0, 100, 13_665, 2_161_633, 6_010_000, 593_720_000, 939_000_000,
+      1_505_409_073, 2_161_633_016, 13_665_575_548, 24_500_000_000,
+    ]
+    for (const value of values) {
+      expect(formatUsdCompact(value)).toBe(formatUsdSummary(value))
+    }
   })
 
   it('formats signed growth, decline and no change', () => {
@@ -96,6 +108,7 @@ describe('summary coverage formatting', () => {
 describe('category volume formatting', () => {
   it('keeps compact amounts in cells and full currency amounts in titles', () => {
     expect(formatUsdCompact(1_505_409_073)).toBe('$1.51B')
+    expect(formatUsdCompact(593_720_000)).toBe('$594M')
     expect(formatUsdFull(1_505_409_073)).toBe('$1,505,409,073')
     expect(formatUsdFull(190.84)).toBe('$190.84')
     expect(formatUsdFull(0)).toBe('$0')

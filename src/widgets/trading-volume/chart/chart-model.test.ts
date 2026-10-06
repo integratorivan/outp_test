@@ -63,11 +63,24 @@ describe('chart geometry', () => {
   it('dashes a gapped week that still has a known sum', () => {
     const weeks = [
       { ...point('2026-09-21', 10, 20), endDay: daySchema.parse('2026-09-27') },
-      { ...point('2026-09-28', 40, 20), endDay: daySchema.parse('2026-10-04'), partial: true },
+      { ...point('2026-09-28', 40, 20), endDay: daySchema.parse('2026-10-04'), partial: true, partialPlatforms: ['kalshi', 'polymarket'] },
     ]
     const chart = geometry(weeks)
     expect(chart.series[0]?.segments[1]?.dashed).toBe(true)
     expect(chart.series[0]?.segments[1]?.positions).toHaveLength(2)
+    expect(chart.series[1]?.segments[1]?.dashed).toBe(true)
+  })
+
+  it('keeps a complete platform solid when only the other platform is missing days', () => {
+    const weeks = [
+      { ...point('2026-09-21', 10, 20), endDay: daySchema.parse('2026-09-27') },
+      { ...point('2026-09-28', 40, 20), endDay: daySchema.parse('2026-10-04'), partial: true, partialPlatforms: ['kalshi'] },
+    ]
+    const chart = geometry(weeks)
+    expect(chart.series[0]?.segments[1]?.dashed).toBe(true)
+    expect(chart.series[1]?.segments).toHaveLength(1)
+    expect(chart.series[1]?.segments[0]?.dashed).toBeUndefined()
+    expect(chart.series[1]?.segments[0]?.positions).toHaveLength(2)
   })
 
   it('keeps the incomplete-week stub in the bright clip when the last full week is selected', () => {

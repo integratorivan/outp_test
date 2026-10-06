@@ -5,10 +5,9 @@ import {
   formatAvailableDays,
   formatChangeBasisFootnote,
   formatCommonDaysBasis,
-  formatDaysCount,
-  formatDaysDative,
   formatMissingDaysLabel,
   formatShare,
+  formatShortPeriod,
   formatUsdFull,
   formatUsdSummary,
   formatVolumeChange,
@@ -31,7 +30,6 @@ import {
   PopoverTitle,
   PopoverTrigger,
 } from '../../../shared/ui/popover'
-import { Progress } from '../../../shared/ui/progress'
 import { Skeleton } from '../../../shared/ui/skeleton'
 import { cn } from '../../../shared/ui/utils'
 import type { VolumeDashboard } from '../use-volume-dashboard'
@@ -40,6 +38,36 @@ const labels = { polymarket: 'Polymarket', kalshi: 'Kalshi' }
 const sourceDescriptions = {
   polymarket: 'Источник — Dune; оборот в USD учитывается по taker-side, без повторного учёта второй стороны сделки.',
   kalshi: 'Источник — Dune; оборот в USD суммируется по дневным данным Kalshi.',
+}
+
+function sentence(text: string) {
+  return `${text.slice(0, 1).toUpperCase()}${text.slice(1)}.`
+}
+
+function summaryCaveats(
+  summary: PlatformVolumeSummary,
+  period: VolumeDashboard['summaryPeriod'],
+): string[] {
+  if (summary.total === null) return ['Нет данных за выбранный период.']
+  const notes: string[] = []
+  const missingLabel = formatMissingDaysLabel(summary.missingDays)
+  if (summary.availablePoints < summary.expectedPoints) {
+    const coverage = formatAvailableDays(summary.availablePoints, summary.expectedPoints)
+    const detail = missingLabel ? `${coverage}; ${missingLabel.replace(/\.$/, '')}` : `${coverage}; пропуски не считаются нулём`
+    notes.push(`${detail}.`)
+  }
+  if (summary.change !== null) {
+    const basis = formatChangeBasisFootnote(summary.changeBasisDays, summary.availablePoints)
+    if (basis) notes.push(sentence(basis))
+  } else if (period && !period.full) {
+    notes.push('Сравнение с предыдущим периодом недоступно: нужен хотя бы один день с данными за прошлое окно и ненулевой оборот в нём.')
+  }
+  if (summary.share !== null && summary.shareBasisDays < summary.expectedPoints) {
+    notes.push(`Доля оборота считается ${formatCommonDaysBasis(summary.shareBasisDays)}.`)
+  } else if (summary.share === null && summary.expectedPoints > 0) {
+    notes.push('Доля общего оборота недоступна.')
+  }
+  return notes
 }
 
 export function VolumeSummary({
@@ -51,7 +79,7 @@ export function VolumeSummary({
 }) {
   return (
     <section
-      className={cn('grid min-w-0 grid-cols-2 gap-group', className)}
+      className={cn('grid min-w-0 grid-cols-2 gap-x-group gap-y-2', className)}
       aria-label="Суммарный оборот за выбранный период"
     >
       <VolumeSummaryCard
@@ -66,7 +94,43 @@ export function VolumeSummary({
         loading={dashboard.isLoading}
         period={dashboard.summaryPeriod}
       />
+      <VolumeShareBar
+        polymarket={dashboard.summary.polymarket.share}
+        kalshi={dashboard.summary.kalshi.share}
+        loading={dashboard.isLoading}
+      />
     </section>
+  )
+}
+
+function VolumeShareBar({
+  polymarket,
+  kalshi,
+  loading,
+}: {
+  polymarket: number | null
+  kalshi: number | null
+  loading: boolean
+}) {
+  if (loading) {
+    return <Skeleton className="col-span-full h-4 w-full" aria-label="Загрузка доли оборота" />
+  }
+  if (polymarket === null || kalshi === null) return null
+  const polymarketLabel = formatShare(polymarket)
+  const kalshiLabel = formatShare(kalshi)
+  return (
+    <div
+      className="col-span-full flex min-w-0 items-center gap-2"
+      role="img"
+      aria-label={`Доля оборота: Polymarket ${polymarketLabel}, Kalshi ${kalshiLabel}`}
+    >
+      <span className="shrink-0 font-mono text-[11px] leading-4 text-platform-polymarket tabular-nums">{polymarketLabel}</span>
+      <span className="flex h-1 min-w-0 flex-1 overflow-hidden rounded-full" aria-hidden="true">
+        <span className="h-full bg-platform-polymarket" style={{ width: `${polymarket * 100}%` }} />
+        <span className="h-full bg-platform-kalshi" style={{ width: `${kalshi * 100}%` }} />
+      </span>
+      <span className="shrink-0 font-mono text-[11px] leading-4 text-platform-kalshi tabular-nums">{kalshiLabel}</span>
+    </div>
   )
 }
 
@@ -79,17 +143,14 @@ function VolumeSummaryCard({
   platform: Platform
   summary: PlatformVolumeSummary
   loading: boolean
-  period: { days: number; full: boolean } | null
+  period: VolumeDashboard['summaryPeriod']
 }) {
   const titleId = useId()
-  const partial =
-    summary.availablePoints < summary.expectedPoints && summary.total !== null
-  const missingLabel = formatMissingDaysLabel(summary.missingDays)
-  const changeBasisFootnote = formatChangeBasisFootnote(summary.changeBasisDays, summary.availablePoints)
-  const shareLabel = summary.share === null
-    ? 'Доля общего оборота недоступна'
-    : `${formatShare(summary.share)} всего оборота`
-  const periodLabel = period === null ? 'выбранный период' : period.full ? 'всё время' : formatDaysCount(period.days)
+  const caveatId = useId()
+  const notes = loading ? [] : summaryCaveats(summary, period)
+  const comparisonTitle = period?.previous
+    ? `К предыдущему периоду: ${formatShortPeriod(period.previous.startDay, period.previous.endDay)}`
+    : 'К предыдущему периоду'
 
   return (
     <article
@@ -118,6 +179,9 @@ function VolumeSummaryCard({
                     variant="ghost"
                     size="icon-xs"
                     aria-label={`Как рассчитан оборот ${labels[platform]}`}
+                    aria-describedby={notes.length > 0 ? caveatId : undefined}
+                    data-caveat={notes.length > 0 ? 'true' : undefined}
+                    className={notes.length > 0 ? 'text-caution hover:text-caution aria-expanded:text-caution' : undefined}
                   />
                 }
               >
@@ -132,95 +196,44 @@ function VolumeSummaryCard({
                   <PopoverTitle>Оборот {labels[platform]}</PopoverTitle>
                   <PopoverDescription>
                     {sourceDescriptions[platform]}
-                    {partial &&
-                      ` ${formatAvailableDays(summary.availablePoints, summary.expectedPoints)}; ${missingLabel ?? 'пропуски не считаются нулём'}.`}
+                    {notes.length > 0 && ` ${notes.join(' ')}`}
                   </PopoverDescription>
                 </PopoverHeader>
               </PopoverContent>
             </Popover>
           </CardAction>
         </CardHeader>
-        <CardContent className="flex min-w-0 flex-1 flex-col justify-between gap-2">
-          <div className="flex min-w-0 flex-col gap-0.5">
-            <span className="text-[11px] leading-4 text-muted-foreground">
-              Оборот за {periodLabel}
-            </span>
-            {loading ? (
-              <Skeleton className="h-6 w-24 max-w-full" aria-label="Загрузка оборота" />
-            ) : (
-              <p
-                title={summary.total === null ? undefined : formatUsdFull(summary.total)}
+        <CardContent className="flex min-w-0 flex-col gap-0.5">
+          {loading ? (
+            <Skeleton className="h-6 w-24 max-w-full" aria-label="Загрузка оборота" />
+          ) : (
+            <p
+              title={summary.total === null ? undefined : formatUsdFull(summary.total)}
+              className={cn(
+                'font-mono text-lg leading-tight font-medium tracking-tighter text-foreground tabular-nums',
+                summary.total === null && 'text-subtle',
+              )}
+            >
+              {summary.total === null ? '—' : formatUsdSummary(summary.total)}
+            </p>
+          )}
+          {period !== null && !period.full && (loading ? (
+            <Skeleton className="h-4 w-28 max-w-full" aria-label="Загрузка сравнения" />
+          ) : summary.change !== null && (
+            <p title={comparisonTitle} className="truncate text-[11px] leading-4 text-muted-foreground">
+              <span
                 className={cn(
-                  'font-mono text-lg leading-tight font-medium tracking-tighter text-foreground tabular-nums',
-                  summary.total === null && 'text-subtle',
+                  'font-mono tabular-nums',
+                  summary.change > 0 && 'text-positive',
+                  summary.change < 0 && 'text-destructive',
                 )}
               >
-                {summary.total === null ? '—' : formatUsdSummary(summary.total)}
-              </p>
-            )}
-            {!loading && partial && (
-              <span className="text-[11px] leading-4 text-muted-foreground">
-                {formatAvailableDays(summary.availablePoints, summary.expectedPoints)}
-                {missingLabel && <>, {missingLabel}</>}
+                {formatVolumeChange(summary.change)}
               </span>
-            )}
-            {!loading && summary.total === null && (
-              <span className="text-[11px] leading-4 text-muted-foreground">Нет данных</span>
-            )}
-            {period !== null && !period.full && (loading ? (
-              <Skeleton className="h-4 w-36 max-w-full" aria-label="Загрузка сравнения" />
-            ) : (
-              <div className="flex min-w-0 flex-col gap-0.5">
-                <p
-                  title={
-                    summary.change === null
-                      ? 'Нужен хотя бы один день с данными за прошлый период и ненулевой оборот в нём.'
-                      : `${formatVolumeChange(summary.change)} к ${formatDaysDative(period.days)}`
-                  }
-                  className={cn(
-                    'truncate text-[11px] leading-4 text-muted-foreground',
-                    summary.change !== null && summary.change > 0 && 'text-positive',
-                    summary.change !== null && summary.change < 0 && 'text-destructive',
-                  )}
-                >
-                  {summary.change === null ? 'Сравнение недоступно' : (
-                    <>
-                      <span className="font-mono tabular-nums">{formatVolumeChange(summary.change)}</span>
-                      {' к '}{formatDaysDative(period.days)}
-                    </>
-                  )}
-                </p>
-                {summary.change !== null && changeBasisFootnote && (
-                  <span className="text-[11px] leading-4 text-muted-foreground">{changeBasisFootnote}</span>
-                )}
-              </div>
-            ))}
-          </div>
-          {loading ? (
-            <Skeleton className="h-4 w-full" aria-label="Загрузка доли оборота" />
-          ) : (
-            <div className="flex flex-col gap-1">
-              <p className="text-[11px] leading-4 text-muted-foreground">
-                {summary.share === null ? shareLabel : (
-                  <><span className="font-mono tabular-nums">{formatShare(summary.share)}</span> всего оборота</>
-                )}
-              </p>
-              {summary.share !== null && (
-                <>
-                  <span className="text-[11px] leading-4 text-muted-foreground">
-                    {formatCommonDaysBasis(summary.shareBasisDays)}
-                  </span>
-                  <Progress
-                    role="meter"
-                    value={summary.share * 100}
-                    aria-label={`Доля общего оборота ${labels[platform]}`}
-                    aria-valuetext={shareLabel}
-                    className="h-1"
-                  />
-                </>
-              )}
-            </div>
-          )}
+              {' '}к пред. периоду
+            </p>
+          ))}
+          {notes.length > 0 && <p id={caveatId} className="sr-only">{notes.join(' ')}</p>}
         </CardContent>
       </Card>
     </article>

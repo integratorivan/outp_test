@@ -29,8 +29,10 @@ export type VolumePoint = ChartPoint & {
   endDay: Day
   /** Trailing calendar week shorter than 7 days inside the selected window. */
   incompleteWeek?: boolean
-  /** Weekly sum uses only known days; at least one calendar day in the bucket was missing. */
+  /** Weekly sum uses only known days; at least one platform is missing a calendar day in the bucket. */
   partial?: boolean
+  /** Platforms whose weekly sum omits at least one calendar day. Drives the dashed stroke. */
+  partialPlatforms?: readonly Platform[]
 }
 export type VolumePeriod = { startDay: Day; endDay: Day }
 export type VolumeSelection = { points: VolumePoint[]; granularity: VolumeGranularity; period: VolumePeriod | null }
@@ -261,9 +263,12 @@ export function aggregateVolumeWeeks(points: readonly VolumePoint[]): VolumePoin
 
   function finishWeek() {
     if (!week) return
-    const kalshiGap = week.kalshi !== null && kalshiDays < bucketDays
-    const polymarketGap = week.polymarket !== null && polymarketDays < bucketDays
-    if (kalshiGap || polymarketGap) week.partial = true
+    const partialPlatforms: Platform[] = []
+    if (week.kalshi !== null && kalshiDays < bucketDays) partialPlatforms.push('kalshi')
+    if (week.polymarket !== null && polymarketDays < bucketDays) partialPlatforms.push('polymarket')
+    if (partialPlatforms.length === 0) return
+    week.partial = true
+    week.partialPlatforms = partialPlatforms
   }
 
   for (const point of points) {

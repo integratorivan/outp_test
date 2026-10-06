@@ -4,7 +4,7 @@ import type { VolumeGranularity, VolumeRange } from '../dashboard/dashboard.ts'
 export const dashboardCategoryLabels = {
   sports: 'Спорт', politics: 'Политика', crypto: 'Криптовалюты', finance: 'Финансы',
   weather: 'Погода', technology: 'Технологии', culture: 'Культура', world: 'Мировые события',
-  health: 'Здоровье', business: 'Бизнес', other: 'Другое',
+  health: 'Здоровье', business: 'Бизнес', combo: 'Комбо-ставки', other: 'Другое',
 } satisfies Record<DashboardCategory, string>
 
 export const dashboardCategoryColor = {
@@ -18,6 +18,7 @@ export const dashboardCategoryColor = {
   world: { dot: 'bg-category-world', text: 'text-category-world' },
   health: { dot: 'bg-category-health', text: 'text-category-health' },
   business: { dot: 'bg-category-business', text: 'text-category-business' },
+  combo: { dot: 'bg-category-combo', text: 'text-category-combo' },
   other: { dot: 'bg-category-other', text: 'text-category-other' },
 } satisfies Record<DashboardCategory, { dot: string; text: string }>
 

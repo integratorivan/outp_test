@@ -53,8 +53,10 @@
   --category-world: #1f9d6a;
   --category-health: #e28ec7;
   --category-business: #efb378;
+  --category-combo: #d46b8a;
   --category-other: #a8b2c1;
   --warning: #e11d48;
+  --caution: #a16207;
   --positive: #087f5b;
   --card: #fff;
   --card-foreground: var(--content);
@@ -126,8 +128,10 @@
   --category-world: oklch(0.74 0.14 155);
   --category-health: oklch(0.74 0.15 340);
   --category-business: oklch(0.76 0.1 55);
+  --category-combo: oklch(0.72 0.13 350);
   --category-other: oklch(0.7 0.02 260);
   --warning: #fb7185;
+  --caution: #facc15;
   --positive: #28cc95;
   --chart-3: oklch(0.8 0.12 85);
   --chart-4: oklch(0.75 0.15 305);
@@ -169,6 +173,7 @@
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
+  --color-caution: var(--caution);
   --color-positive: var(--positive);
   --color-border: var(--stroke);
   --color-border-strong: var(--stroke-strong);
@@ -189,6 +194,7 @@
   --color-category-world: var(--category-world);
   --color-category-health: var(--category-health);
   --color-category-business: var(--category-business);
+  --color-category-combo: var(--category-combo);
   --color-category-other: var(--category-other);
   --color-stat-accent: var(--stat-accent);
   --color-chart-1: var(--chart-1);
@@ -293,10 +299,6 @@
     [data-slot="card"][data-variant="stat"]:hover::before {
       opacity: 1;
     }
-  }
-
-  .volume-summary-card [data-slot="progress"] {
-    --primary: var(--stat-accent);
   }
 
   .stat-icon {

@@ -16,7 +16,7 @@ export const knownPolymarketCategories = [
 
 export const dashboardCategories = [
   'sports', 'politics', 'crypto', 'finance', 'weather', 'technology',
-  'culture', 'world', 'health', 'business', 'other',
+  'culture', 'world', 'health', 'business', 'combo', 'other',
 ] as const
 
 export const dashboardCategorySchema = z.enum(dashboardCategories)
@@ -41,7 +41,7 @@ export const kalshiCategoryMap = {
   health: 'health',
   companies: 'business',
   business: 'business',
-  exotics: 'other',
+  exotics: 'combo',
   mentions: 'other',
   transportation: 'other',
   education: 'other',
