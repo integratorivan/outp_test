@@ -18,8 +18,8 @@ import type {
   VolumeRange,
   VolumeWindow,
 } from '../../entities/volume/dashboard/dashboard'
-import { matchWindowPreset, presetWindow } from '../../entities/volume/dashboard/dashboard'
-import { formatPeriod, formatShortPeriod } from '../../entities/volume/lib/format'
+import { countCompleteWeeks, displayedGranularity, matchWindowPreset, minCompleteWeeks, presetWindow } from '../../entities/volume/dashboard/dashboard'
+import { formatShortPeriod, formatSidebarPeriod } from '../../entities/volume/lib/format'
 import { dashboardCategoryLabels, volumeGranularities, volumeRanges } from '../../entities/volume/lib/labels'
 import type { Platform } from '../../entities/volume/model'
 import { buildCategoryAnalysisContext, buildPlatformAnalysisContext, type AnalysisContext } from '../../features/chart-analysis/model'
@@ -99,6 +99,14 @@ export function TradingVolume({
   const volumeWindow = dashboard.window
   const bounds = dashboard.bounds
   const preset = volumeWindow && bounds ? matchWindowPreset(volumeWindow, bounds) : null
+  const completeWeeks = volumeWindow && bounds ? countCompleteWeeks(volumeWindow, bounds) : null
+  const weekEnabled = completeWeeks === null || completeWeeks >= minCompleteWeeks
+  const chartGranularity = displayedGranularity(granularity, completeWeeks)
+  const weekHint = 'Для недель выбери период от 3 недель'
+
+  useEffect(() => {
+    if (granularity === 'week' && !weekEnabled) onGranularityChange('day')
+  }, [granularity, weekEnabled, onGranularityChange])
 
   function applyPreset(value: VolumeRange) {
     if (!bounds) return
@@ -290,23 +298,32 @@ export function TradingVolume({
       aria-label="Шаг графика"
       className="flex min-w-0 flex-1 items-center gap-1"
     >
-      {volumeGranularities.map((item) => (
-        <Button
-          key={item.value}
-          variant="ghost"
-          size="default"
-          aria-pressed={granularity === item.value}
-          onClick={() => onGranularityChange(item.value)}
-          className={cn(
-            'min-h-9 flex-1 rounded-full px-2.5 sm:min-h-8 sm:flex-none sm:px-3',
-            granularity === item.value
-              ? 'bg-muted text-foreground hover:bg-muted'
-              : 'text-muted-foreground',
-          )}
-        >
-          {item.label}
-        </Button>
-      ))}
+      {volumeGranularities.map((item) => {
+        const disabled = item.value === 'week' && !weekEnabled
+        return (
+          <span
+            key={item.value}
+            className="inline-flex min-w-0 flex-1 sm:flex-none"
+            title={disabled ? weekHint : undefined}
+          >
+            <Button
+              variant="ghost"
+              size="default"
+              aria-pressed={chartGranularity === item.value}
+              disabled={disabled}
+              onClick={() => onGranularityChange(item.value)}
+              className={cn(
+                'min-h-9 w-full rounded-full px-2.5 sm:min-h-8 sm:w-auto sm:px-3',
+                chartGranularity === item.value
+                  ? 'bg-muted text-foreground hover:bg-muted'
+                  : 'text-muted-foreground',
+              )}
+            >
+              {item.label}
+            </Button>
+          </span>
+        )
+      })}
     </div>
   )
 
@@ -324,8 +341,8 @@ export function TradingVolume({
         orderedCategories={categoryList}
         values={view === 'categories' && activeCategoryPoint ? activeCategoryPoint.values : categoryTotals}
         periodLabel={view === 'categories' && activeCategoryPoint
-          ? formatPeriod(activeCategoryPoint.day, activeCategoryPoint.endDay)
-          : period ? formatPeriod(period.startDay, period.endDay) : 'За выбранный период'}
+          ? formatSidebarPeriod(activeCategoryPoint.day, activeCategoryPoint.endDay)
+          : volumeWindow ? formatSidebarPeriod(volumeWindow.from, volumeWindow.to) : 'За выбранный период'}
         onToggleCategory={onToggleCategory}
       />
       <Card className="col-span-full min-w-0 max-lg:order-1 overflow-visible lg:col-span-7 lg:col-start-1 lg:row-start-1 xl:col-span-8">
@@ -463,7 +480,7 @@ export function TradingVolume({
                     points={dashboard.categoryPoints}
                     orderedCategories={dashboard.orderedCategories}
                     categories={stackCategories}
-                    granularity={dashboard.granularity}
+                    granularity={chartGranularity}
                     onActivePointChange={setActiveCategoryPoint}
                     windowControl={windowControl}
                     analysisSelected={Boolean(analysisSelection)}
@@ -475,7 +492,7 @@ export function TradingVolume({
                         previous: dashboard.categoryPoints[dashboard.categoryPoints.indexOf(point) - 1],
                         categories: selectedCategories,
                         platforms: chartPlatforms,
-                        granularity: dashboard.granularity,
+                        granularity: chartGranularity,
                       }),
                     })}
                     svgRef={categorySvgRef}
@@ -484,7 +501,7 @@ export function TradingVolume({
                   <VolumeChart
                     points={dashboard.points}
                     visiblePlatforms={chartPlatforms}
-                    granularity={dashboard.granularity}
+                    granularity={chartGranularity}
                     scale={scale}
                     analysisSelected={Boolean(analysisSelection)}
                     instantTransition={interacting}
@@ -497,7 +514,7 @@ export function TradingVolume({
                         previous: dashboard.points[dashboard.points.indexOf(point) - 1],
                         categories: selectedCategories,
                         platforms: chartPlatforms,
-                        granularity: dashboard.granularity,
+                        granularity: chartGranularity,
                       }),
                     })}
                     svgRef={platformSvgRef}

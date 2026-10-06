@@ -1,10 +1,10 @@
 import { animate, motion, useMotionValue, useMotionValueEvent, useReducedMotion, type Transition } from 'motion/react'
 import { useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent, type RefObject } from 'react'
 
-import { windowDays, type ChartScale, type VolumePoint } from '../../../entities/volume/dashboard/dashboard'
-import { formatCompactPeriod, formatDateTick, formatDaysCount, formatPeriod, formatShortPeriod, formatUsd, formatUsdCompact, formatUsdTick, formatWeeklyDailyAverage } from '../../../entities/volume/lib/format'
+import { type ChartScale, type VolumePoint } from '../../../entities/volume/dashboard/dashboard'
+import { formatCompactPeriod, formatDateTick, formatPeriod, formatPlatformWeekDays, formatShortPeriod, formatUsd, formatUsdCompact, formatUsdTick, formatWeekChartCaption } from '../../../entities/volume/lib/format'
 import type { Day, Platform } from '../../../entities/volume/model'
-import { buildChartGeometry, chartRevealX, nearestPointIndex } from './chart-model'
+import { buildChartGeometry, nearestPointIndex } from './chart-model'
 import { useChartWindow, type ChartWindowControl } from './use-chart-window'
 import { usePlotWidth } from '../hooks/use-plot-width'
 import { createChartFrame, sampleSeriesY, type ChartFrame } from './chart-transition'
@@ -51,20 +51,17 @@ export function VolumeChart({ points, visiblePlatforms, granularity, scale, svgR
   const currentIndex = selectedIndex >= 0 ? selectedIndex : Math.max(0, points.length - 1)
   const selected = points[currentIndex]
   const selectedX = selected ? geometry.x(selected.day) : geometry.right
-  const selectedDays = selected ? windowDays({ from: selected.day, to: selected.endDay }) : 0
-  const partialWeek = selected?.partial
-    ? ' · неполные данные'
-    : granularity === 'week' && selectedDays > 0 && selectedDays < 7 ? ` · ${formatDaysCount(selectedDays)}` : ''
+  const weekCaption = granularity === 'week' && points[0] && points.at(-1)
+    ? formatWeekChartCaption(points[0].day, points.at(-1)!.endDay)
+    : ''
   const dateText = selected
     ? (width < 480 && selected.day !== selected.endDay
       ? formatCompactPeriod(selected.day, selected.endDay)
-      : formatShortPeriod(selected.day, selected.endDay)) + partialWeek
+      : formatShortPeriod(selected.day, selected.endDay))
     : ''
   const labelsOnLeft = selectedX > Math.max(width / 2, geometry.right - 160)
   const labelX = selectedX
-  // Keep the trailing incomplete-week stub bright when the crosshair is on the last full week.
-  // Otherwise the hover wipe clips at Monday and the chart looks like a mid-air cliff.
-  const revealX = chartRevealX({ selectedX, selectedIndex: currentIndex, points, x: geometry.x })
+  const revealX = selectedX
   const clipId = useId()
   const plotClipId = useId()
   const axisClipId = useId()
@@ -77,8 +74,9 @@ export function VolumeChart({ points, visiblePlatforms, granularity, scale, svgR
         const series = frame.series.find((entry) => entry.platform === platform)
         const y = sampleSeriesY(series?.segments ?? [], selectedX)
         if (y === null) return []
-        const label = granularity === 'week' ? formatWeeklyDailyAverage(value) : formatUsdCompact(value)
-        return [{ platform, value, label, pointY: y, y }]
+        const days = platform === 'kalshi' ? selected.kalshiDays : selected.polymarketDays
+        const coverage = granularity === 'week' && days !== undefined && days < 7 ? formatPlatformWeekDays(labels[platform], days) : null
+        return [{ platform, value, label: formatUsdCompact(value), coverage, pointY: y, y }]
       }).sort((a, b) => a.y - b.y)
     : []
   const labelGap = 40
@@ -167,13 +165,13 @@ export function VolumeChart({ points, visiblePlatforms, granularity, scale, svgR
       const pointX = geometry.x(point.day)
       moveDateLabel(pointX)
       clipRight.stop()
-      clipRight.set(chartRevealX({ selectedX: pointX, selectedIndex: index, points, x: geometry.x }))
+      clipRight.set(pointX)
     }
     setActive(true)
   }
 
   const valueText = selected
-    ? `${formatPeriod(selected.day, selected.endDay)}${partialWeek} Kalshi: ${platformValueText(selected, 'kalshi', granularity)}. Polymarket: ${platformValueText(selected, 'polymarket', granularity)}.`
+    ? `${formatPeriod(selected.day, selected.endDay)} ${platformValueText(selected, 'kalshi', granularity)}. ${platformValueText(selected, 'polymarket', granularity)}.`
     : 'Нет данных'
 
   return (
@@ -209,6 +207,17 @@ export function VolumeChart({ points, visiblePlatforms, granularity, scale, svgR
           gestures.panning ? 'cursor-grabbing' : 'cursor-crosshair',
         )}
       >
+        {weekCaption && (
+          <p
+            data-week-caption=""
+            className={cn(
+              'pointer-events-none absolute top-0 left-0 font-mono text-xs text-muted-foreground tabular-nums',
+              active && 'invisible',
+            )}
+          >
+            {weekCaption}
+          </p>
+        )}
         <motion.div
           data-chart-date=""
           aria-hidden="true"
@@ -234,9 +243,6 @@ export function VolumeChart({ points, visiblePlatforms, granularity, scale, svgR
               <rect ref={clipRectRef} x={geometry.left} y={0} width={Math.max(0, clipRight.get() - geometry.left)} height={height} />
             </clipPath>
           </defs>
-          {granularity === 'week' && (
-            <text x={geometry.left - 12} y={10} textAnchor="end" className="chart-axis">в день</text>
-          )}
           <g clipPath={`url(#${axisClipId})`}>
             {frame.yTicks.map((tick) => (
               <g key={tick.value} opacity={tick.opacity}>
@@ -280,6 +286,7 @@ export function VolumeChart({ points, visiblePlatforms, granularity, scale, svgR
             >
               <span className="text-[11px] font-medium leading-none">{labels[entry.platform]}</span>
               <span className="font-mono text-[11px] font-semibold leading-none tabular-nums">{entry.label}</span>
+              {entry.coverage && <span className="text-[11px] leading-none">{entry.coverage}</span>}
             </div>
           </motion.div>
         ))}
@@ -290,8 +297,11 @@ export function VolumeChart({ points, visiblePlatforms, granularity, scale, svgR
 
 function platformValueText(point: VolumePoint, platform: Platform, granularity: 'day' | 'week') {
   const value = point[platform]
-  if (value === null) return formatUsd(null)
-  return granularity === 'week' ? formatWeeklyDailyAverage(value) : formatUsd(value)
+  const name = labels[platform]
+  if (value === null) return `${name}: ${formatUsd(null)}`
+  const days = platform === 'kalshi' ? point.kalshiDays : point.polymarketDays
+  const coverage = granularity === 'week' && days !== undefined && days < 7 ? formatPlatformWeekDays(name, days) : null
+  return coverage ? `${name}: ${formatUsd(value)}. ${coverage}` : `${name}: ${formatUsd(value)}`
 }
 
 function SeriesMarks({ series }: { series: ChartFrame['series'] }) {

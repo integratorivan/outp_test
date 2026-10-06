@@ -63,20 +63,11 @@ describe('category chart interaction', () => {
     expect(html).not.toContain('Итого:')
   })
 
-  it('labels a short calendar week by its actual dates and number of days', () => {
-    const endDay = daySchema.parse('2026-10-01')
-    const html = renderChart({ day, endDay, total: 20, values: { sports: 20 }, partial: false })
-    expect(html).toContain(`${formatPeriod(day, endDay)} · 2 дня`)
-    expect(html).toContain('Итого: $20.')
-    expect(html).not.toContain('Неполные данные')
-  })
-
-  it('dashes a trailing incomplete week without special tooltip copy', () => {
-    const endDay = daySchema.parse('2026-10-01')
-    const html = renderChart({ day, endDay, total: 20, values: { sports: 20 }, incompleteWeek: true })
-    expect(html).toContain(`${formatPeriod(day, endDay)} · 2 дня`)
-    expect(html).toContain('Итого: $20.')
+  it('dashes a partial point with a pale fill', () => {
+    const html = renderChart({ day, endDay: day, total: 20, values: { sports: 20 }, partial: true })
+    expect(html).toContain('Известный оборот: $20. Неполные данные.')
     expect(html).toContain('stroke-dasharray="5 5"')
+    expect(html).toContain('category-partial-fill')
     expect(html).not.toContain('неполная неделя')
   })
 })

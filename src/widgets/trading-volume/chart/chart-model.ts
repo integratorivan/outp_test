@@ -34,26 +34,6 @@ export function nearestPointIndex(times: readonly number[], target: number): num
   return time !== undefined && previous !== undefined && target - previous <= time - target ? left - 1 : left
 }
 
-/** Bright-clip X while hovering: keep the trailing incomplete-week stub visible from the last full week. */
-export function chartRevealX({
-  selectedX,
-  selectedIndex,
-  points,
-  x,
-}: {
-  selectedX: number
-  selectedIndex: number
-  points: readonly { day: Day; incompleteWeek?: boolean }[]
-  x: (day: Day) => number
-}): number {
-  const trailing = points.at(-1)
-  const selected = points[selectedIndex]
-  if (!trailing?.incompleteWeek || !selected || selected.incompleteWeek || selectedIndex !== points.length - 2) {
-    return selectedX
-  }
-  return x(trailing.day)
-}
-
 export function buildUsdDomain(maximum: number) {
   const rawStep = (maximum || 4) / 4
   const magnitude = 10 ** Math.floor(Math.log10(rawStep))
@@ -73,6 +53,24 @@ export function buildUsdTicks(maximum: number, symlog: boolean): number[] {
 }
 
 export type DateTick = { day: Day; x: number; format: DateTickFormat }
+
+const minDateLabelGap = 40
+
+/** Drops a label that sits under 40px from the previous one. The last label stays. */
+function spaceDateTicks(ticks: DateTick[]): DateTick[] {
+  if (ticks.length <= 1) return ticks
+  const last = ticks[ticks.length - 1]
+  if (!last) return ticks
+  const kept: DateTick[] = []
+  for (const tick of ticks.slice(0, -1)) {
+    const previous = kept[kept.length - 1]
+    if (previous && tick.x - previous.x < minDateLabelGap) continue
+    if (last.x - tick.x < minDateLabelGap) continue
+    kept.push(tick)
+  }
+  kept.push(last)
+  return kept
+}
 
 export function buildDateTicks({ days, firstTime, lastTime, width, left, right, x }: {
   days: readonly Day[]
@@ -114,7 +112,7 @@ export function buildDateTicks({ days, firstTime, lastTime, width, left, right, 
       if (tickIndexes.has(index)) xTicks.push({ day, x: x(day), format })
     }
   }
-  return xTicks
+  return spaceDateTicks(xTicks)
 }
 
 export function buildChartGeometry({ points, visiblePlatforms, width, height, scale = 'linear', domain }: {

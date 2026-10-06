@@ -22,18 +22,16 @@ export type DashboardFilters = {
   categories: readonly DashboardCategory[]
   view: ChartView
   scale: ChartScale
-  /** Chart bucket size; weekly mode also trims the trailing incomplete week from KPI. */
+  /** Chart bucket size. Weekly mode changes only the chart; KPI stays on the exact window. */
   granularity: VolumeGranularity
 }
 export type VolumePoint = ChartPoint & {
   endDay: Day
-  /** Trailing calendar week shorter than 7 days inside the selected window. */
-  incompleteWeek?: boolean
-  /** Weekly average uses only known days; at least one platform is missing a calendar day in the bucket. */
+  /** At least one platform is missing a calendar day in this bucket. */
   partial?: boolean
-  /** Platforms whose week omits at least one calendar day. Drives the dashed stroke per series. */
+  /** Platforms whose week omits at least one calendar day. Dashes that series only. */
   partialPlatforms?: readonly Platform[]
-  /** Known days and week totals before daily averaging; set only in week mode. */
+  /** Known days in the week. `kalshi` / `polymarket` stay the weekly sum. */
   kalshiDays?: number
   polymarketDays?: number
   kalshiTotal?: number
@@ -48,8 +46,6 @@ export type CategoryChartPoint = {
   values: Partial<Record<DashboardCategory, number | null>>
   /** The known sum is missing data from a selected platform. */
   partial?: boolean
-  /** Trailing calendar week shorter than 7 days inside the selected window. */
-  incompleteWeek?: boolean
 }
 export type CategorySelection = { points: CategoryChartPoint[]; granularity: VolumeGranularity; period: VolumePeriod | null }
 
@@ -57,6 +53,7 @@ const dayMs = 86_400_000
 const rangeDays = { '7d': 7, '30d': 30, '90d': 90 }
 const defaultRange: VolumeRange = '30d'
 export const minWindowDays = 7
+export const minCompleteWeeks = 3
 
 export function windowDays(window: VolumeWindow): number {
   return Math.round((Date.parse(window.to) - Date.parse(window.from)) / dayMs) + 1
@@ -225,45 +222,57 @@ export function previousVolumePeriod(period: VolumePeriod): VolumePeriod {
   return { startDay: shiftDay(period.startDay, -days), endDay: shiftDay(period.startDay, -1) }
 }
 
-export function weekBucketDays(point: Pick<VolumePoint, 'day' | 'endDay'>): number {
-  return windowDays({ from: point.day, to: point.endDay })
+function utcWeekday(day: Day) {
+  return new Date(day).getUTCDay()
 }
 
-/** Marks only the last bucket when it ends on the window edge and spans fewer than 7 days. */
-export function markTrailingIncompleteWeek<T extends { day: Day; endDay: Day; incompleteWeek?: boolean }>(
-  points: readonly T[],
-  windowEnd: Day,
-): T[] {
-  const last = points.at(-1)
-  if (!last || last.endDay !== windowEnd || weekBucketDays(last) >= 7) return [...points]
-  return points.map((point, index) => index === points.length - 1 ? { ...point, incompleteWeek: true } : point)
+export function mondayOnOrBefore(day: Day): Day {
+  return shiftDay(day, -((utcWeekday(day) + 6) % 7))
 }
 
-/** Dashes each platform that has a value on a trailing incomplete week, without affecting the other series. */
-export function markIncompleteWeekPlatforms(points: readonly VolumePoint[]): VolumePoint[] {
-  return points.map((point) => {
-    if (!point.incompleteWeek) return point
-    const partialPlatforms = new Set(point.partialPlatforms ?? [])
-    if (point.kalshi !== null) partialPlatforms.add('kalshi')
-    if (point.polymarket !== null) partialPlatforms.add('polymarket')
-    if (partialPlatforms.size === 0) return point
-    // Keep `partial` for true data gaps only; short trailing weeks still use incompleteWeek + day count in the label.
-    return { ...point, partialPlatforms: [...partialPlatforms] }
-  })
+function sundayOnOrBefore(day: Day): Day {
+  const weekday = utcWeekday(day)
+  return weekday === 0 ? day : shiftDay(day, -weekday)
 }
 
-/**
- * Drops trailing incomplete-week days from KPI / Δ windows when the chart is weekly.
- * The leading edge week stays included so early history is not silently discarded.
- */
-export function completeSummaryWindow(window: VolumeWindow, granularity: VolumeGranularity): VolumeWindow {
-  if (granularity !== 'week') return window
-  const weekday = new Date(window.to).getUTCDay()
-  const monday = shiftDay(window.to, -((weekday + 6) % 7))
-  const trailingFrom = monday < window.from ? window.from : monday
-  if (windowDays({ from: trailingFrom, to: window.to }) >= 7) return window
-  const to = shiftDay(trailingFrom, -1)
-  return to < window.from ? window : { from: window.from, to }
+function nextMondayOnOrAfter(day: Day): Day {
+  const sinceMonday = (utcWeekday(day) + 6) % 7
+  return sinceMonday === 0 ? day : shiftDay(day, 7 - sinceMonday)
+}
+
+/** A drawn week is Monday–Sunday. Source holes do not make it incomplete. */
+export function isCompleteCalendarWeek(point: { day: Day; endDay: Day }) {
+  return utcWeekday(point.day) === 1 && utcWeekday(point.endDay) === 0 && windowDays({ from: point.day, to: point.endDay }) === 7
+}
+
+function earliestDay(rows: readonly { day: Day }[]): Day | undefined {
+  let first: Day | undefined
+  for (const row of rows) {
+    if (!first || row.day < first) first = row.day
+  }
+  return first
+}
+
+/** Pulls the grid back to Monday when that day is already in the loaded history. */
+function weeklyChartFrom(from: Day, rows: readonly { day: Day }[]): Day {
+  const monday = mondayOnOrBefore(from)
+  const first = earliestDay(rows)
+  if (!first || monday < first) return from
+  return monday
+}
+
+/** Complete Mon–Sun weeks in the window, including a leading Monday that is already loaded. */
+export function countCompleteWeeks(window: VolumeWindow, bounds: HistoryBounds): number {
+  const gridFrom = mondayOnOrBefore(window.from)
+  const firstMonday = gridFrom < bounds.firstDay ? nextMondayOnOrAfter(bounds.firstDay) : gridFrom
+  const lastSunday = sundayOnOrBefore(window.to)
+  if (firstMonday > lastSunday) return 0
+  return Math.floor(windowDays({ from: firstMonday, to: lastSunday }) / 7)
+}
+
+export function displayedGranularity(granularity: VolumeGranularity, completeWeeks: number | null): VolumeGranularity {
+  if (granularity === 'week' && completeWeeks !== null && completeWeeks < minCompleteWeeks) return 'day'
+  return granularity
 }
 
 function addAvailableVolume(total: number | null, value: number | null): number | null {
@@ -285,13 +294,11 @@ export function aggregateVolumeWeeks(points: readonly VolumePoint[]): VolumePoin
     if (week.kalshi !== null) {
       week.kalshiTotal = week.kalshi
       week.kalshiDays = kalshiDays
-      week.kalshi = kalshiDays > 0 ? week.kalshi / kalshiDays : null
       if (kalshiDays < bucketDays) partialPlatforms.push('kalshi')
     }
     if (week.polymarket !== null) {
       week.polymarketTotal = week.polymarket
       week.polymarketDays = polymarketDays
-      week.polymarket = polymarketDays > 0 ? week.polymarket / polymarketDays : null
       if (polymarketDays < bucketDays) partialPlatforms.push('polymarket')
     }
     if (partialPlatforms.length === 0) return
@@ -329,7 +336,8 @@ function selectVolumeSelection(
   window: VolumeWindow,
   granularity: VolumeGranularity,
 ): VolumeSelection {
-  const { from, to } = window
+  const to = window.to
+  const from = granularity === 'week' ? weeklyChartFrom(window.from, rows) : window.from
   const selected = selectChartPoints(rows, { categories, startDay: from, endDay: to })
 
   const byDay = new Map(selected.map((point) => [point.day, point]))
@@ -339,7 +347,7 @@ function selectVolumeSelection(
   }
 
   const displayed = granularity === 'week'
-    ? markIncompleteWeekPlatforms(markTrailingIncompleteWeek(aggregateVolumeWeeks(points), to))
+    ? aggregateVolumeWeeks(points).filter(isCompleteCalendarWeek)
     : points
   const displayedStart = displayed[0]?.day
   const displayedEnd = displayed.at(-1)?.endDay
@@ -416,7 +424,8 @@ function selectCategorySelection(
   granularity: VolumeGranularity,
   platforms: readonly Platform[],
 ): CategorySelection {
-  const { from, to } = window
+  const to = window.to
+  const from = granularity === 'week' ? weeklyChartFrom(window.from, rows) : window.from
   const selected = selectCategoryChartPoints(rows, { categories, startDay: from, endDay: to })
   const coverage = new Map(selectChartPoints(rows, { categories, startDay: from, endDay: to })
     .map((point) => [point.day, platforms.every((platform) => point[platform] !== null)]))
@@ -431,7 +440,7 @@ function selectCategorySelection(
   }
 
   const displayed = granularity === 'week'
-    ? markTrailingIncompleteWeek(aggregateCategoryWeeks(points, categories), to)
+    ? aggregateCategoryWeeks(points, categories).filter(isCompleteCalendarWeek)
     : points
   const displayedStart = displayed[0]?.day
   const displayedEnd = displayed.at(-1)?.endDay
@@ -459,23 +468,20 @@ export function selectPreviousVolumeSummarySelection(
   categories: readonly DashboardCategory[],
   window: VolumeWindow | null,
   bounds: HistoryBounds | null,
-  granularity: VolumeGranularity = 'day',
 ): VolumeSelection {
   if (!window || (bounds && isFullHistoryWindow(window, bounds))) return { points: [], granularity: 'day', period: null }
-  const summaryWindow = completeSummaryWindow(window, granularity)
   return selectVolumeSelection(rows, categories, {
-    from: shiftDay(summaryWindow.from, -windowDays(summaryWindow)),
-    to: shiftDay(summaryWindow.from, -1),
+    from: shiftDay(window.from, -windowDays(window)),
+    to: shiftDay(window.from, -1),
   }, 'day')
 }
 
-/** Sum available daily values; when the chart is weekly, omit the trailing incomplete week. */
+/** Sum available daily values over the exact selected window. */
 export function selectVolumeSummarySelection(
   rows: readonly DashboardVolumeRow[],
   categories: readonly DashboardCategory[],
   window: VolumeWindow | null,
-  granularity: VolumeGranularity = 'day',
 ): VolumeSelection {
   if (!window) return { points: [], granularity: 'day', period: null }
-  return selectVolumeSelection(rows, categories, completeSummaryWindow(window, granularity), 'day')
+  return selectVolumeSelection(rows, categories, window, 'day')
 }

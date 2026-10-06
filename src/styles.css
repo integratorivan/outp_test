@@ -53,7 +53,7 @@
   --category-world: #1f9d6a;
   --category-health: #e28ec7;
   --category-business: #efb378;
-  --category-combo: #d46b8a;
+  --category-combo: #f15a22;
   --category-other: #a8b2c1;
   --warning: #e11d48;
   --caution: #a16207;
@@ -128,7 +128,7 @@
   --category-world: oklch(0.74 0.14 155);
   --category-health: oklch(0.74 0.15 340);
   --category-business: oklch(0.76 0.1 55);
-  --category-combo: oklch(0.72 0.13 350);
+  --category-combo: oklch(0.74 0.18 45);
   --category-other: oklch(0.7 0.02 260);
   --warning: #fb7185;
   --caution: #facc15;
@@ -356,6 +356,10 @@
 
   .category-gradient-bottom {
     stop-opacity: 0.02;
+  }
+
+  .category-partial-fill {
+    opacity: 0.4;
   }
 
   .category-boundary {

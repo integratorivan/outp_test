@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 
 import type { VolumePoint } from '../../../entities/volume/dashboard/dashboard'
-import { daySchema } from '../../../entities/volume/model'
-import { buildChartGeometry, chartRevealX, nearestPointIndex } from './chart-model'
+import { daySchema, type Day } from '../../../entities/volume/model'
+import { buildChartGeometry, buildDateTicks, nearestPointIndex } from './chart-model'
 
 function point(day: string, kalshi: number | null, polymarket: number | null): VolumePoint {
   return { day: daySchema.parse(day), endDay: daySchema.parse(day), kalshi, polymarket }
@@ -48,10 +48,10 @@ describe('chart geometry', () => {
     expect(geometry(weeks).series[0]?.path.match(/L/g)).toHaveLength(1)
   })
 
-  it('dashes only the connector into a trailing incomplete week', () => {
+  it('dashes only the connector into a partial week', () => {
     const weeks = [
       { ...point('2026-09-21', 10, 20), endDay: daySchema.parse('2026-09-27') },
-      { ...point('2026-09-28', 20, 40), endDay: daySchema.parse('2026-10-01'), incompleteWeek: true, partial: true, partialPlatforms: ['kalshi', 'polymarket'] as const },
+      { ...point('2026-09-28', 20, 40), endDay: daySchema.parse('2026-10-04'), partial: true, partialPlatforms: ['kalshi', 'polymarket'] as const },
     ]
     const chart = geometry(weeks)
     expect(chart.series[0]?.segments).toHaveLength(2)
@@ -83,18 +83,23 @@ describe('chart geometry', () => {
     expect(chart.series[1]?.segments[0]?.positions).toHaveLength(2)
   })
 
-  it('keeps the incomplete-week stub in the bright clip when the last full week is selected', () => {
-    const weeks = [
-      { ...point('2026-09-14', 5, 10), endDay: daySchema.parse('2026-09-20') },
-      { ...point('2026-09-21', 10, 20), endDay: daySchema.parse('2026-09-27') },
-      { ...point('2026-09-28', 20, 40), endDay: daySchema.parse('2026-10-01'), incompleteWeek: true },
-    ]
-    const chart = geometry(weeks)
-    const fullWeekX = chart.x(daySchema.parse('2026-09-21'))
-    const incompleteX = chart.x(daySchema.parse('2026-09-28'))
-    expect(chartRevealX({ selectedX: fullWeekX, selectedIndex: 1, points: weeks, x: chart.x })).toBe(incompleteX)
-    expect(chartRevealX({ selectedX: chart.x(daySchema.parse('2026-09-14')), selectedIndex: 0, points: weeks, x: chart.x })).toBe(chart.x(daySchema.parse('2026-09-14')))
-    expect(chartRevealX({ selectedX: incompleteX, selectedIndex: 2, points: weeks, x: chart.x })).toBe(incompleteX)
+  it('drops an x label closer than 40px to the previous one and keeps the last', () => {
+    const days = ['2026-08-17', '2026-08-24', '2026-09-28', '2026-10-05'].map((day) => daySchema.parse(day))
+    const positions = [100, 130, 400, 430]
+    const x = (day: Day) => positions[days.indexOf(day)] ?? 0
+    const ticks = buildDateTicks({
+      days,
+      firstTime: Date.parse(days[0] ?? '2026-08-17'),
+      lastTime: Date.parse(days.at(-1) ?? '2026-10-05'),
+      width: 800,
+      left: 64,
+      right: 784,
+      x,
+    })
+    expect(ticks.map((tick) => tick.day)).toEqual(['2026-08-17', '2026-10-05'])
+    for (let index = 1; index < ticks.length; index += 1) {
+      expect((ticks[index]?.x ?? 0) - (ticks[index - 1]?.x ?? 0)).toBeGreaterThanOrEqual(40)
+    }
   })
 
   it('uses actual elapsed dates for X position', () => {

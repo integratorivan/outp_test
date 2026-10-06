@@ -108,21 +108,21 @@ export function buildCategoryChartGeometry({ points, categories, width, height, 
         continue
       }
       const position = { x: x(point.day), y0: y(offset.base), y1: y(offset.base + offset.value) }
-      if (point.incompleteWeek) {
-        finishSegment()
-        const previous = points[index - 1]
-        const previousOffset = previous && !previous.incompleteWeek ? stackedOffsets[index - 1]?.get(category) ?? null : null
-        if (previous && previousOffset) {
-          segment = [
-            { x: x(previous.day), y0: y(previousOffset.base), y1: y(previousOffset.base + previousOffset.value) },
-            position,
-          ]
+      if (point.partial) {
+        if (!dashed) {
+          const anchor = segment.at(-1)
+          finishSegment()
+          dashed = true
+          segment = anchor ? [anchor, position] : [position]
         } else {
-          segment = [position]
+          segment.push(position)
         }
-        dashed = true
-        finishSegment()
         continue
+      }
+      if (dashed) {
+        const anchor = segment.at(-1)
+        finishSegment()
+        if (anchor) segment = [anchor]
       }
       segment.push(position)
     }

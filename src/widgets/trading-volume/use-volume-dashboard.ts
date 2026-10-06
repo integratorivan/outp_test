@@ -3,7 +3,6 @@ import { useMemo } from 'react'
 
 import {
   clampWindow,
-  completeSummaryWindow,
   isFullHistoryWindow,
   previousVolumePeriod,
   resolveVolumeWindow,
@@ -71,16 +70,15 @@ export function useVolumeDashboard(
   const historyPoints = useMemo(() => bounds ? selectHistoryPoints(rows, categories, bounds) : [], [rows, categories, bounds])
   const orderedCategories = useMemo(() => orderCategoriesByAllTimeVolume(rows), [rows])
   const fullHistory = window !== null && bounds !== null && isFullHistoryWindow(window, bounds)
-  const summaryWindow = useMemo(() => window ? completeSummaryWindow(window, granularity) : null, [window, granularity])
-  const startDay = summaryWindow?.from
-  const endDay = summaryWindow?.to
+  const startDay = window?.from
+  const endDay = window?.to
   const categoryBreakdown = useMemo(() => selectCategoryBreakdown(
     startDay && endDay ? rows : [],
     { startDay, endDay },
     !fullHistory && startDay && endDay ? previousVolumePeriod({ startDay, endDay }) : null,
   ), [rows, startDay, endDay, fullHistory])
-  const summarySelection = useMemo(() => selectVolumeSummarySelection(rows, categories, window, granularity), [rows, categories, window, granularity])
-  const previousSummarySelection = useMemo(() => selectPreviousVolumeSummarySelection(rows, categories, window, bounds, granularity), [rows, categories, window, bounds, granularity])
+  const summarySelection = useMemo(() => selectVolumeSummarySelection(rows, categories, window), [rows, categories, window])
+  const previousSummarySelection = useMemo(() => selectPreviousVolumeSummarySelection(rows, categories, window, bounds), [rows, categories, window, bounds])
   const summary = useMemo(() => selectVolumeSummary(summarySelection.points, previousSummarySelection.points), [summarySelection.points, previousSummarySelection.points])
 
   return {
@@ -92,8 +90,8 @@ export function useVolumeDashboard(
     categoryPeriod: categoryChart.period,
     summary,
     summaryGranularity: summarySelection.granularity,
-    summaryPeriod: summaryWindow
-      ? { days: windowDays(summaryWindow), full: fullHistory, previous: previousSummarySelection.period }
+    summaryPeriod: window
+      ? { days: windowDays(window), full: fullHistory, previous: previousSummarySelection.period }
       : null,
     orderedCategories,
     categoryBreakdown,

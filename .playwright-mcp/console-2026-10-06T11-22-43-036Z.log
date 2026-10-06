@@ -1,0 +1,12 @@
+[   47123ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://127.0.0.1:5178/node_modules/.vite/deps/react-dom_client.js?v=eec0a105:15804
+[   47166ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://127.0.0.1:5178/favicon.ico:0
+[   65812ms] [ERROR] Base UI: A component that acts as a button expected a native <button> because the `nativeButton` prop is true. Rendering a non-<button> removes native button semantics, which can impact forms and accessibility. Use a real <button> in the `render` prop, or set `nativeButton` to `false`.
+    at Button (http://127.0.0.1:5178/src/shared/ui/button.tsx:34:25)
+    at ChartExportDialog (http://127.0.0.1:5178/src/widgets/trading-volume/export/chart-export-dialog.tsx:143:23)
+    at TradingVolume (http://127.0.0.1:5178/src/widgets/trading-volume/trading-volume.tsx:604:36)
+    at App (http://127.0.0.1:5178/src/app/app.tsx:33:30) @ http://127.0.0.1:5178/@vite/client:356
+[   73910ms] [ERROR] Error: <rect> attribute width: A negative value is not valid. ("-26") @ http://127.0.0.1:5178/node_modules/.vite/deps/react-dom_client.js?v=eec0a105:1357
+[  155485ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://127.0.0.1:5178/node_modules/.vite/deps/react-dom_client.js?v=eec0a105:15804
+[  156844ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://127.0.0.1:5178/node_modules/.vite/deps/react-dom_client.js?v=eec0a105:15804
+[  328625ms] [LOG] [vite] server connection lost. Polling for restart... @ http://127.0.0.1:5178/@vite/client:1081
+[  330680ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://127.0.0.1:5178/node_modules/.vite/deps/react-dom_client.js?v=3f57216a:15804

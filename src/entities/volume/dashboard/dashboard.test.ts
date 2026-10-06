@@ -3,7 +3,9 @@ import { describe, expect, it } from 'vitest'
 import { dashboardCategories } from '../categories'
 import {
   clampWindow,
-  completeSummaryWindow,
+  countCompleteWeeks,
+  displayedGranularity,
+  isCompleteCalendarWeek,
   matchWindowPreset,
   panWindow,
   parseDashboardFilters,
@@ -230,27 +232,26 @@ describe('volume dashboard selection', () => {
     expect(result.points.every((point) => point.day === point.endDay)).toBe(true)
   })
 
-  it('averages calendar weeks including the actual dates at both history edges', () => {
+  it('sums complete Monday–Sunday weeks and drops calendar edges', () => {
     const rows = history('2026-01-01', 100).flatMap((item, index) => [
       { ...item, volumeUsd: index + 1 },
       { ...item, platform: 'polymarket', volumeUsd: (index + 1) * 2 } satisfies DashboardVolumeRow,
     ])
     const weekly = select(rows, preset(rows, 'all'), dashboardCategories, 'week')
     expect(weekly.granularity).toBe('week')
-    expect(weekly.points).toHaveLength(15)
-    expect(weekly.period).toEqual({ startDay: '2026-01-01', endDay: '2026-04-10' })
-    for (const [index, week] of weekly.points.entries()) {
+    expect(weekly.points[0]?.day).toBe('2026-01-05')
+    expect(weekly.points.at(-1)?.endDay).toBe('2026-04-05')
+    expect(weekly.points.every(isCompleteCalendarWeek)).toBe(true)
+    for (const week of weekly.points) {
       const days = rows.filter((row) => row.day >= week.day && row.day <= week.endDay)
-      expect(days).toHaveLength(index === 0 ? 8 : index === 14 ? 10 : 14)
-      if (index > 0) expect(new Date(week.day).getUTCDay()).toBe(1)
-      if (index < 14) expect(new Date(week.endDay).getUTCDay()).toBe(0)
+      expect(days).toHaveLength(14)
       const kalshiDays = days.filter((row) => row.platform === 'kalshi')
       const polymarketDays = days.filter((row) => row.platform === 'polymarket')
       const kalshiTotal = kalshiDays.reduce((sum, row) => sum + row.volumeUsd, 0)
       const polymarketTotal = polymarketDays.reduce((sum, row) => sum + row.volumeUsd, 0)
       expect(week).toMatchObject({
-        kalshi: kalshiTotal / kalshiDays.length,
-        polymarket: polymarketTotal / polymarketDays.length,
+        kalshi: kalshiTotal,
+        polymarket: polymarketTotal,
         kalshiDays: kalshiDays.length,
         polymarketDays: polymarketDays.length,
         kalshiTotal,
@@ -258,10 +259,10 @@ describe('volume dashboard selection', () => {
       })
     }
     const breakdown = selectCategoryBreakdown(rows, weekly.period ?? {})
-    expect(breakdown.rows[0]?.total).toBe(weekly.points.reduce((sum, point) => sum + (point.kalshiTotal ?? 0) + (point.polymarketTotal ?? 0), 0))
+    expect(breakdown.rows[0]?.total).toBe(weekly.points.reduce((sum, point) => sum + (point.kalshi ?? 0) + (point.polymarket ?? 0), 0))
   })
 
-  it('preserves missing calendar days, platform gaps and confirmed zeros in weekly averages', () => {
+  it('preserves missing calendar days, platform gaps and confirmed zeros in weekly sums', () => {
     const kalshi = history('2026-01-01', 100).filter((item) => item.day !== '2026-03-18')
     const polymarket = history('2026-01-01', 100).map((item) => ({ ...item, platform: 'polymarket', volumeUsd: 0 } satisfies DashboardVolumeRow))
     const rows = [...kalshi, ...polymarket]
@@ -269,7 +270,7 @@ describe('volume dashboard selection', () => {
     expect(result.points.find((point) => point.day === '2026-03-16')).toEqual({
       day: '2026-03-16',
       endDay: '2026-03-22',
-      kalshi: 10,
+      kalshi: 60,
       polymarket: 0,
       kalshiDays: 6,
       polymarketDays: 7,
@@ -279,40 +280,35 @@ describe('volume dashboard selection', () => {
       partialPlatforms: ['kalshi'],
     })
     const gap = select(kalshi, preset(kalshi, 'all'), dashboardCategories, 'week')
-    expect(gap.points.find((point) => point.day === '2026-03-16')).toMatchObject({ kalshi: 10, kalshiTotal: 60, partial: true, partialPlatforms: ['kalshi'] })
+    expect(gap.points.find((point) => point.day === '2026-03-16')).toMatchObject({ kalshi: 60, kalshiTotal: 60, partial: true, partialPlatforms: ['kalshi'] })
     expect(gap.points.every((point) => point.polymarket === null)).toBe(true)
-    expect(gap.points.some((point) => point.kalshiTotal === 70)).toBe(true)
+    expect(gap.points.some((point) => point.kalshi === 70)).toBe(true)
   })
 
-  it('keeps partial weeks at both edges without inventing days outside the history', () => {
+  it('drops calendar-incomplete weeks at both edges of all available history', () => {
     const rows = history('2026-01-01', 181)
     const result = select(rows, preset(rows, 'all'), dashboardCategories, 'week')
     expect(result.granularity).toBe('week')
-    expect(result.points).toHaveLength(27)
-    expect(result.points[0]).toEqual({
-      day: '2026-01-01', endDay: '2026-01-04', kalshi: 10, polymarket: null, kalshiDays: 4, kalshiTotal: 40,
-    })
-    expect(result.points.at(-1)).toEqual({
-      day: '2026-06-29',
-      endDay: '2026-06-30',
-      kalshi: 10,
-      polymarket: null,
-      kalshiDays: 2,
-      kalshiTotal: 20,
-      incompleteWeek: true,
-      partialPlatforms: ['kalshi'],
-    })
-    expect(result.points[0]?.incompleteWeek).toBeUndefined()
-    expect(result.period).toEqual({ startDay: '2026-01-01', endDay: '2026-06-30' })
+    expect(result.points[0]).toMatchObject({ day: '2026-01-05', endDay: '2026-01-11', kalshi: 70, kalshiDays: 7, kalshiTotal: 70 })
+    expect(result.points.at(-1)).toMatchObject({ day: '2026-06-22', endDay: '2026-06-28', kalshi: 70, kalshiDays: 7 })
+    expect(result.points.every(isCompleteCalendarWeek)).toBe(true)
+    expect(result.period).toEqual({ startDay: '2026-01-05', endDay: '2026-06-28' })
     const displayedTotal = rows.filter((item) => result.period && item.day >= result.period.startDay && item.day <= result.period.endDay).reduce((total, item) => total + item.volumeUsd, 0)
-    expect(result.points.reduce((total, point) => total + (point.kalshiTotal ?? 0), 0)).toBe(displayedTotal)
-    expect(displayedTotal).toBe(1810)
+    expect(result.points.reduce((total, point) => total + (point.kalshi ?? 0), 0)).toBe(displayedTotal)
+    expect(displayedTotal).toBe(1750)
   })
 
-  it('does not mark a complete trailing Sunday-ending week as incomplete', () => {
-    const rows = history('2026-01-05', 182)
-    const result = select(rows, preset(rows, 'all'), dashboardCategories, 'week')
-    expect(result.points.every((point) => !point.incompleteWeek)).toBe(true)
+  it('shifts the week grid back to Monday using days already loaded before the window', () => {
+    const rows = history('2026-09-01', 40)
+    const window = { from: daySchema.parse('2026-09-16'), to: daySchema.parse('2026-10-04') }
+    const result = select(rows, window, dashboardCategories, 'week')
+    const firstWeek = result.points[0]
+    expect(firstWeek).toMatchObject({ day: '2026-09-14', endDay: '2026-09-20', kalshi: 70, kalshiDays: 7 })
+    if (!firstWeek) throw new Error('Expected the Monday week')
+    expect(firstWeek.day < window.from).toBe(true)
+    expect(result.points.at(-1)?.endDay).toBe('2026-10-04')
+    expect(result.points.every(isCompleteCalendarWeek)).toBe(true)
+    expect(countCompleteWeeks(window, boundsOf(rows))).toBe(result.points.length)
   })
 
   it('keeps complete boundary weeks when the source already starts Monday and ends Sunday', () => {
@@ -357,13 +353,13 @@ describe('volume dashboard selection', () => {
     expect(breakdown.rows[0]?.total).toBe(selection.points.reduce((sum, point) => sum + (point.kalshi ?? 0), 0))
   })
 
-  it('keeps a known weekly platform average and marks it partial when a day is missing', () => {
+  it('keeps a known weekly platform sum and marks it partial when a day is missing', () => {
     const rows = history('2026-01-01', 181).filter((item) => item.day !== '2026-01-07')
     rows.push(...history('2026-01-01', 181).map((item) => ({ ...item, platform: 'polymarket' } satisfies DashboardVolumeRow)))
     const week = select(rows, preset(rows, 'all'), dashboardCategories, 'week').points.find((point) => point.day === '2026-01-05')
     expect(week).toMatchObject({
-      kalshi: 10,
-      polymarket: 10,
+      kalshi: 60,
+      polymarket: 70,
       kalshiDays: 6,
       polymarketDays: 7,
       kalshiTotal: 60,
@@ -373,7 +369,7 @@ describe('volume dashboard selection', () => {
     })
   })
 
-  it('keeps sparse trailing weeks instead of dropping them when mid-week days are missing', () => {
+  it('keeps a calendar-complete week with a source hole and drops the unfinished week after it', () => {
     const days = ['2026-09-28', '2026-09-29', '2026-09-30', '2026-10-01', '2026-10-05'] as const
     const rows = days.flatMap((day) => [row(day, 'kalshi', 10), row(day, 'polymarket', 5)])
     const result = select(rows, preset(rows, 'all'), dashboardCategories, 'week')
@@ -381,8 +377,8 @@ describe('volume dashboard selection', () => {
       {
         day: '2026-09-28',
         endDay: '2026-10-04',
-        kalshi: 10,
-        polymarket: 5,
+        kalshi: 40,
+        polymarket: 20,
         kalshiDays: 4,
         polymarketDays: 4,
         kalshiTotal: 40,
@@ -390,19 +386,19 @@ describe('volume dashboard selection', () => {
         partial: true,
         partialPlatforms: ['kalshi', 'polymarket'],
       },
-      {
-        day: '2026-10-05',
-        endDay: '2026-10-05',
-        kalshi: 10,
-        polymarket: 5,
-        kalshiDays: 1,
-        polymarketDays: 1,
-        kalshiTotal: 10,
-        polymarketTotal: 5,
-        incompleteWeek: true,
-        partialPlatforms: ['kalshi', 'polymarket'],
-      },
     ])
+  })
+
+  it('enables week mode only from three complete weeks', () => {
+    const bounds = { firstDay: daySchema.parse('2026-01-01'), lastDay: daySchema.parse('2026-10-06') }
+    const twoWeeks = { from: daySchema.parse('2026-09-16'), to: daySchema.parse('2026-09-30') }
+    const threeWeeks = { from: daySchema.parse('2026-09-14'), to: daySchema.parse('2026-10-04') }
+    expect(countCompleteWeeks(twoWeeks, bounds)).toBe(2)
+    expect(countCompleteWeeks(threeWeeks, bounds)).toBe(3)
+    expect(displayedGranularity('week', countCompleteWeeks(twoWeeks, bounds))).toBe('day')
+    expect(displayedGranularity('week', countCompleteWeeks(threeWeeks, bounds))).toBe('week')
+    expect(displayedGranularity('day', 0)).toBe('day')
+    expect(countCompleteWeeks({ from: bounds.firstDay, to: daySchema.parse('2026-01-20') }, bounds)).toBe(2)
   })
 })
 
@@ -416,16 +412,18 @@ describe('daily KPI selection', () => {
     expect(result.points).toHaveLength(count)
   })
 
-  it('excludes the trailing incomplete week from KPI when the chart is weekly', () => {
+  it('keeps the same KPI for the exact window in day and week chart modes', () => {
     const rows = history('2026-01-01', 181)
     const window = preset(rows, 'all')
-    expect(completeSummaryWindow(window, 'week')).toEqual({ from: '2026-01-01', to: '2026-06-28' })
-    const daily = selectVolumeSummarySelection(rows, dashboardCategories, window, 'day')
-    const weekly = selectVolumeSummarySelection(rows, dashboardCategories, window, 'week')
-    expect(daily.points).toHaveLength(181)
-    expect(weekly.points).toHaveLength(179)
-    expect(selectVolumeSummary(weekly.points).kalshi.total).toBe(1790)
-    expect(weekly.points.at(-1)?.day).toBe('2026-06-28')
+    const summary = selectVolumeSummarySelection(rows, dashboardCategories, window)
+    const dailyChart = select(rows, window, dashboardCategories, 'day')
+    const weeklyChart = select(rows, window, dashboardCategories, 'week')
+    expect(summary.points).toHaveLength(181)
+    expect(selectVolumeSummary(summary.points).kalshi.total).toBe(1810)
+    expect(selectVolumeSummary(dailyChart.points).kalshi.total).toBe(selectVolumeSummary(summary.points).kalshi.total)
+    expect(weeklyChart.points.length).toBeLessThan(summary.points.length)
+    expect(weeklyChart.points.at(-1)?.endDay).toBe('2026-06-28')
+    expect(summary.points.at(-1)?.day).toBe('2026-06-30')
   })
 
   it('keeps known daily sums across gaps and matches category totals even when weekly points are missing', () => {
@@ -501,14 +499,14 @@ describe('category dashboard selection', () => {
     expect(result.points.every((point) => point.partial)).toBe(true)
   })
 
-  it('keeps partial calendar weeks without calling their fully covered dates missing', () => {
+  it('drops calendar-incomplete category weeks the same way as the platform chart', () => {
     const rows = history('2026-01-01', 181)
     const result = selectCategories(rows, preset(rows, 'all'), ['sports'], ['kalshi'], 'week')
-    expect(result.points[0]).toEqual({ day: '2026-01-01', endDay: '2026-01-04', total: 40, values: { sports: 40 }, partial: false })
-    expect(result.points.at(-1)).toEqual({ day: '2026-06-29', endDay: '2026-06-30', total: 20, values: { sports: 20 }, partial: false, incompleteWeek: true })
-    expect(result.points[0]?.incompleteWeek).toBeUndefined()
-    expect(result.period).toEqual({ startDay: '2026-01-01', endDay: '2026-06-30' })
-    expect(result.points.reduce((sum, point) => sum + (point.total ?? 0), 0)).toBe(1810)
+    expect(result.points[0]).toEqual({ day: '2026-01-05', endDay: '2026-01-11', total: 70, values: { sports: 70 }, partial: false })
+    expect(result.points.at(-1)).toEqual({ day: '2026-06-22', endDay: '2026-06-28', total: 70, values: { sports: 70 }, partial: false })
+    expect(result.points.every(isCompleteCalendarWeek)).toBe(true)
+    expect(result.period).toEqual({ startDay: '2026-01-05', endDay: '2026-06-28' })
+    expect(result.points.reduce((sum, point) => sum + (point.total ?? 0), 0)).toBe(1750)
   })
 
   it('marks a weekly known sum partial when a selected platform misses a day', () => {

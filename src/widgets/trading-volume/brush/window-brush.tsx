@@ -1,7 +1,7 @@
 import { useId, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react'
 
 import {
-  aggregateVolumeWeeks, clampWindow, dayAtTime, minWindowDays, panWindow, shiftDay, windowDays,
+  aggregateVolumeWeeks, clampWindow, dayAtTime, isCompleteCalendarWeek, minWindowDays, panWindow, shiftDay, windowDays,
   type HistoryBounds, type VolumePoint, type VolumeWindow,
 } from '../../../entities/volume/dashboard/dashboard'
 import { formatDay, formatShortPeriod } from '../../../entities/volume/lib/format'
@@ -54,7 +54,7 @@ export function WindowBrush({ points, visiblePlatforms, window, bounds, onPrevie
 
   const displayed = useMemo(() => {
     const context = points.filter((point) => Date.parse(point.endDay) >= firstTime - 7 * dayMs && Date.parse(point.day) <= firstTime + spanMs + 7 * dayMs)
-    return windowDays(viewport) > 400 ? aggregateVolumeWeeks(context) : context
+    return windowDays(viewport) > 400 ? aggregateVolumeWeeks(context).filter(isCompleteCalendarWeek) : context
   }, [points, firstTime, spanMs, viewport.from, viewport.to])
 
   const paths = useMemo(() => {

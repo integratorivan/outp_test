@@ -1,8 +1,8 @@
 import { useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent, type RefObject } from 'react'
 
 import type { DashboardCategory } from '../../../entities/volume/categories'
-import { windowDays, type CategoryChartPoint } from '../../../entities/volume/dashboard/dashboard'
-import { formatDateTick, formatDaysCount, formatPeriod, formatShortPeriod, formatUsd, formatUsdCompact, formatUsdTick, formatShare } from '../../../entities/volume/lib/format'
+import type { CategoryChartPoint } from '../../../entities/volume/dashboard/dashboard'
+import { formatDateTick, formatPeriod, formatShortPeriod, formatUsd, formatUsdCompact, formatUsdTick, formatShare, formatWeekChartCaption } from '../../../entities/volume/lib/format'
 import { dashboardCategoryColor, dashboardCategoryLabels } from '../../../entities/volume/lib/labels'
 import type { Day } from '../../../entities/volume/model'
 import { buildCategoryChartGeometry, buildCategoryTooltipRows, categoryAreaPath, categoryOutlinePath, positionCategoryTooltip } from './category-chart-model'
@@ -40,8 +40,9 @@ export function CategoryAreaChart({ points, orderedCategories, categories, granu
   const currentIndex = selectedIndex >= 0 ? selectedIndex : Math.max(0, points.length - 1)
   const selected = points[currentIndex]
   const selectedX = selected ? geometry.x(selected.day) : geometry.right
-  const selectedDays = selected ? windowDays({ from: selected.day, to: selected.endDay }) : 0
-  const partialWeek = granularity === 'week' && selectedDays > 0 && selectedDays < 7 ? ` · ${formatDaysCount(selectedDays)}` : ''
+  const weekCaption = granularity === 'week' && points[0] && points.at(-1)
+    ? formatWeekChartCaption(points[0].day, points.at(-1)!.endDay)
+    : ''
   const tooltipPosition = positionCategoryTooltip({
     ...(cursorPosition ?? { x: selectedX, y: geometry.top + 80 }),
     width,
@@ -61,7 +62,7 @@ export function CategoryAreaChart({ points, orderedCategories, categories, granu
   })
   const showTooltip = active && tooltipRows.length > 0
   const valueText = selected && selected.total !== null
-    ? `${formatPeriod(selected.day, selected.endDay)}${partialWeek} ${selected.partial ? 'Известный оборот' : 'Итого'}: ${formatUsd(selected.total)}.${selected.partial ? ' Неполные данные.' : ''}`
+    ? `${formatPeriod(selected.day, selected.endDay)} ${selected.partial ? 'Известный оборот' : 'Итого'}: ${formatUsd(selected.total)}.${selected.partial ? ' Неполные данные.' : ''}`
     : 'Нет данных'
 
   useLayoutEffect(() => {
@@ -151,9 +152,20 @@ export function CategoryAreaChart({ points, orderedCategories, categories, granu
           gestures.panning ? 'cursor-grabbing' : 'cursor-crosshair',
         )}
       >
+        {weekCaption && (
+          <p
+            data-week-caption=""
+            className={cn(
+              'pointer-events-none absolute top-0 left-0 font-mono text-xs text-muted-foreground tabular-nums',
+              active && 'invisible',
+            )}
+          >
+            {weekCaption}
+          </p>
+        )}
         {selected && (
           <div data-chart-date="" aria-hidden="true" className={cn('pointer-events-none absolute top-0 w-60 max-w-[calc(100%-1rem)] text-center font-mono text-xs text-muted-foreground tabular-nums', (!active || analysisSelected) && 'invisible')} style={{ left: `clamp(8px, calc(${selectedX / width * 100}% - 120px), calc(100% - 248px))` }}>
-            {formatShortPeriod(selected.day, selected.endDay)}{partialWeek}
+            {formatShortPeriod(selected.day, selected.endDay)}
           </div>
         )}
         <svg ref={svgRef} aria-hidden="true" width="100%" height={height} viewBox={`0 0 ${width} ${height}`} className="block select-none">
@@ -189,7 +201,7 @@ export function CategoryAreaChart({ points, orderedCategories, categories, granu
               <g key={area.category} data-category-series={area.category}>
                 {area.segments.map((segment, index) => (
                   <g key={index}>
-                    <path d={categoryAreaPath(segment)} fill={`url(#${gradientId}-${area.category})`} />
+                    <path d={categoryAreaPath(segment)} fill={`url(#${gradientId}-${area.category})`} className={segment.dashed ? 'category-partial-fill' : undefined} />
                     <path
                       d={categoryOutlinePath(segment)}
                       stroke={area.color}

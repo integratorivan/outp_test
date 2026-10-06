@@ -1,0 +1,5 @@
+[     370ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://127.0.0.1:5179/node_modules/.vite/deps/react-dom_client.js?v=eec0a105:15804
+[     392ms] ZodError
+    at readAppConfig (http://127.0.0.1:5179/src/shared/config/schema.ts:11:35)
+    at http://127.0.0.1:5179/src/shared/config/app.ts:2:26
+[     402ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://127.0.0.1:5179/favicon.ico:0

@@ -14,7 +14,9 @@ import {
   formatUsdTick,
   formatUsdSummary,
   formatVolumeChange,
-  formatWeeklyDailyAverage,
+  formatPlatformWeekDays,
+  formatSidebarPeriod,
+  formatWeekChartCaption,
 } from './format'
 import { daySchema } from '../model'
 
@@ -31,9 +33,15 @@ describe('chart axis formatting', () => {
     expect([1_000_000, 10_000_000, 100_000_000, 1_000_000_000].map(formatUsdTick)).toEqual(['$1M', '$10M', '$100M', '$1B'])
   })
 
-  it('formats week-mode tooltip as daily average', () => {
-    expect(formatWeeklyDailyAverage(517_000_000)).toBe('≈$517M/день')
-    expect(formatWeeklyDailyAverage(100_000_000)).toBe('≈$100M/день')
+  it('formats the weekly chart caption and a gapped platform tooltip', () => {
+    expect(formatWeekChartCaption(daySchema.parse('2026-08-31'), daySchema.parse('2026-10-04'))).toBe('недели 31 авг – 4 окт')
+    expect(formatPlatformWeekDays('Kalshi', 5)).toBe('Kalshi: 5 из 7 дн.')
+  })
+
+  it('formats the sidebar period with a short month and day count', () => {
+    expect(formatSidebarPeriod(daySchema.parse('2026-09-19'), daySchema.parse('2026-10-03'))).toBe('19 сент – 3 окт 2026 · 15 дн.')
+    expect(formatSidebarPeriod(daySchema.parse('2026-09-16'), daySchema.parse('2026-09-30'))).toBe('16–30 сент 2026 · 15 дн.')
+    expect(formatSidebarPeriod(daySchema.parse('2025-12-19'), daySchema.parse('2026-01-03'))).toBe('19 дек 2025 – 3 янв 2026 · 16 дн.')
   })
 })
 

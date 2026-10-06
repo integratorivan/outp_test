@@ -138,6 +138,22 @@ describe('category area geometry', () => {
     expect(geometry.y(geometry.domainMax)).toBe(geometry.top)
   })
 
+  it('dashes a run of partial points instead of drawing them as a solid drop', () => {
+    const withPartial: CategoryChartPoint[] = [
+      points[0]!,
+      { ...point('2026-10-03', { sports: 4, politics: 1 }, 5), partial: true },
+      { ...point('2026-10-04', { sports: 6, politics: 2 }, 8), partial: true },
+      point('2026-10-05', { sports: 30, politics: 10 }, 40),
+    ]
+    const geometry = buildCategoryChartGeometry({ points: withPartial, categories: ['sports', 'politics'], width: 800, height: 336 })
+    for (const area of geometry.areas) {
+      const dashed = area.segments.filter((segment) => segment.dashed)
+      expect(dashed).toHaveLength(1)
+      expect(dashed[0]?.positions.length).toBeGreaterThanOrEqual(3)
+      expect(area.segments.some((segment) => !segment.dashed)).toBe(true)
+    }
+  })
+
   it('breaks every band at an uncovered day instead of bridging it', () => {
     const withGap: CategoryChartPoint[] = [
       points[0]!,

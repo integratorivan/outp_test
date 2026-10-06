@@ -215,6 +215,32 @@ describe('chart loading in TradingVolume', () => {
     expect(html).not.toContain('aria-pressed:bg-primary')
   })
 
+  it('disables week mode when the period has fewer than three complete weeks', () => {
+    const html = renderToStaticMarkup(createElement(TradingVolume, {
+      dashboard: {
+        ...loadingDashboard,
+        isLoading: false,
+        isFetching: false,
+        window: { from: daySchema.parse('2026-09-16'), to: daySchema.parse('2026-09-30') },
+        bounds: { firstDay: daySchema.parse('2026-01-01'), lastDay: daySchema.parse('2026-10-06') },
+      },
+      visiblePlatforms: ['kalshi', 'polymarket'],
+      onVisiblePlatformsChange: () => {},
+      view: 'platforms',
+      scale: 'linear',
+      selectedCategories: dashboardCategories,
+      ...chartControls,
+      granularity: 'week',
+    }))
+    const weekButton = html.match(/<button\b[^>]*>Неделя<\/button>/)?.[0]
+    expect(weekButton).toContain('disabled')
+    expect(weekButton).toContain('aria-pressed="false"')
+    expect(html).toContain('title="Для недель выбери период от 3 недель"')
+    expect(html).toContain('16–30 сент 2026 · 15 дн.')
+    const dayButton = html.match(/<button\b[^>]*>День<\/button>/)?.[0]
+    expect(dayButton).toContain('aria-pressed="true"')
+  })
+
   it('renders the category breakdown in its own card after the chart', () => {
     const day = daySchema.parse('2026-10-01')
     const html = renderToStaticMarkup(createElement(TradingVolume, {

@@ -1,4 +1,4 @@
-import { shiftDay } from '../dashboard/dashboard'
+import { shiftDay, windowDays } from '../dashboard/dashboard'
 import type { Day } from '../model'
 
 const dateFormatter = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })
@@ -15,10 +15,6 @@ const percentFormatter = new Intl.NumberFormat('en-US', { style: 'percent', maxi
 const daysPlural = new Intl.PluralRules('ru-RU')
 const dayForms: Record<string, string> = { one: 'день', few: 'дня', many: 'дней' }
 const commonDayForms: Record<string, string> = { one: 'общему дню', few: 'общим дням', many: 'общим дням' }
-
-export function formatDaysCount(count: number) {
-  return `${count} ${dayForms[daysPlural.select(count)] ?? 'дня'}`
-}
 
 export function formatDay(day: Day) {
   return dateFormatter.format(new Date(day))
@@ -105,9 +101,36 @@ export function formatAvailableDays(available: number, expected: number) {
   return `${available} из ${expected} ${dayForms[daysPlural.select(expected)] ?? 'дней'}`
 }
 
-/** Week-mode chart tooltip: daily average only. */
-export function formatWeeklyDailyAverage(average: number) {
-  return `≈${formatUsdCompact(average)}/день`
+function shortMonthDay(day: Day) {
+  return tickFormatter.format(new Date(day)).replace(/\.$/, '')
+}
+
+/** Caption above a weekly chart: `недели 31 авг – 4 окт`. */
+export function formatWeekChartCaption(start: Day, end: Day) {
+  const first = new Date(start)
+  const last = new Date(end)
+  if (first.getUTCFullYear() === last.getUTCFullYear()) return `недели ${shortMonthDay(start)} – ${shortMonthDay(end)}`
+  return `недели ${shortMonthDay(start)} ${first.getUTCFullYear()} – ${shortMonthDay(end)} ${last.getUTCFullYear()}`
+}
+
+/** Sidebar period: `19 сент – 3 окт 2026 · 15 дн.` */
+export function formatSidebarPeriod(start: Day, end: Day) {
+  const first = new Date(start)
+  const last = new Date(end)
+  const sameYear = first.getUTCFullYear() === last.getUTCFullYear()
+  const sameMonth = sameYear && first.getUTCMonth() === last.getUTCMonth()
+  const days = `${windowDays({ from: start, to: end })} дн.`
+  if (start === end) return `${shortMonthDay(start)} ${last.getUTCFullYear()} · ${days}`
+  if (sameMonth) {
+    const month = shortMonthDay(end).replace(/^\d+\s/, '')
+    return `${first.getUTCDate()}–${last.getUTCDate()} ${month} ${last.getUTCFullYear()} · ${days}`
+  }
+  if (sameYear) return `${shortMonthDay(start)} – ${shortMonthDay(end)} ${last.getUTCFullYear()} · ${days}`
+  return `${shortMonthDay(start)} ${first.getUTCFullYear()} – ${shortMonthDay(end)} ${last.getUTCFullYear()} · ${days}`
+}
+
+export function formatPlatformWeekDays(platform: string, days: number) {
+  return `${platform}: ${days} из 7 дн.`
 }
 
 export function formatMissingDaysLabel(missingDays: readonly Day[]) {
