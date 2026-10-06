@@ -4,7 +4,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 
 import { App } from './app/app'
-import { volumeRepository } from './app/volume-repository'
+import { createVolumeRepository } from './app/volume-repository'
 import { restoreVolumeSnapshot } from './entities/volume/data/queries'
 import { queryClient } from './shared/query-client'
 import { applyTheme, readSavedThemeMode } from './shared/theme/theme.model'
@@ -17,6 +17,18 @@ applyTheme(readSavedThemeMode())
 const reactRoot = createRoot(root)
 
 async function startApp() {
+  let volumeRepository
+  try {
+    volumeRepository = createVolumeRepository()
+  } catch {
+    reactRoot.render(
+      <main className="mx-auto max-w-page px-page-gutter py-section">
+        <p role="alert">Добавьте VITE_DUNE_API_KEY в .env</p>
+      </main>,
+    )
+    return
+  }
+
   try {
     await Promise.all([
       restoreVolumeSnapshot(queryClient, volumeRepository, 'kalshi'),
@@ -26,7 +38,7 @@ async function startApp() {
       <StrictMode>
         <QueryClientProvider client={queryClient}>
           <MotionConfig reducedMotion="user">
-            <App />
+            <App volumeRepository={volumeRepository} />
           </MotionConfig>
         </QueryClientProvider>
       </StrictMode>,

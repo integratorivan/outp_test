@@ -176,7 +176,7 @@ export function WindowBrush({ points, visiblePlatforms, window, bounds, onPrevie
             aria-valuemin={edge === 'from' ? Date.parse(bounds.firstDay) : Date.parse(window.from) + minimumSpan * dayMs}
             aria-valuemax={edge === 'to' ? Date.parse(bounds.lastDay) : Date.parse(window.to) - minimumSpan * dayMs}
             aria-valuenow={Date.parse(window[edge])} aria-valuetext={formatDay(window[edge])}
-            className={cn('absolute top-1/2 flex h-full w-7 -translate-x-1/2 -translate-y-1/2 cursor-ew-resize items-center justify-center rounded-control outline-none touch-none focus-visible:outline-2 focus-visible:outline-ring focus-visible:-outline-offset-2', animated && 'transition-[left] duration-300 ease-out motion-reduce:transition-none')}
+            className={cn('absolute top-1/2 flex h-full w-7 -translate-x-1/2 -translate-y-1/2 cursor-ew-resize items-center justify-center rounded-control outline-none touch-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset', animated && 'transition-[left] duration-300 ease-out motion-reduce:transition-none')}
             style={{ left: `${edge === 'from' ? fromPercent : toPercent}%` }}
             onPointerDown={(event) => startDrag(event, edge)} onPointerMove={onDragMove} onPointerUp={endDrag} onPointerCancel={endDrag} onLostPointerCapture={endDrag}
             onKeyDown={(event) => onKeyDown(edge, event)}

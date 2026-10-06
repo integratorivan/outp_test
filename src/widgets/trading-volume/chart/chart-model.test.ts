@@ -13,6 +13,11 @@ function geometry(data: readonly VolumePoint[] = points) {
 }
 
 describe('chart geometry', () => {
+  it.each([0, 18, 26, 44])('keeps plot bounds ordered during a narrow layout at width %s', (width) => {
+    const chart = buildChartGeometry({ points, visiblePlatforms: ['kalshi', 'polymarket'], width, height: 280 })
+    expect(chart.right).toBeGreaterThanOrEqual(chart.left)
+    expect(chart.pointXs.every((x) => Number.isFinite(x) && x >= chart.left && x <= chart.right)).toBe(true)
+  })
   it('uses one USD domain from visible series with a zero baseline', () => {
     const both = geometry()
     const kalshi = buildChartGeometry({ points, visiblePlatforms: ['kalshi'], width: 800, height: 336 })

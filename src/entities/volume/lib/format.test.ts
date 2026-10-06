@@ -109,8 +109,10 @@ describe('summary coverage formatting', () => {
   })
 
   it('collapses missing days into compact gap labels', () => {
-    expect(formatMissingDaysLabel([daySchema.parse('2026-10-03'), daySchema.parse('2026-10-04')])).toBe('нет данных 3–4 окт.')
-    expect(formatMissingDaysLabel([daySchema.parse('2024-02-29')])).toBe('нет данных 29 февр.')
+    expect(formatMissingDaysLabel([daySchema.parse('2026-10-03'), daySchema.parse('2026-10-04')])).toBe('нет данных 3–4 окт. 2026')
+    expect(formatMissingDaysLabel([daySchema.parse('2024-02-29')])).toBe('нет данных 29 февр. 2024')
+    expect(formatMissingDaysLabel(['2021-07-03', '2026-10-03', '2026-10-04'].map((day) => daySchema.parse(day)))).toBe('нет данных 3 июл. 2021, 3–4 окт. 2026')
+    expect(formatMissingDaysLabel(['2025-12-31', '2026-01-01'].map((day) => daySchema.parse(day)))).toBe('нет данных 31 дек. 2025 — 1 янв. 2026')
   })
 
   it('formats change basis footnotes only when pairing is partial', () => {

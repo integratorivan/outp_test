@@ -118,7 +118,7 @@ describe('VolumeSummary', () => {
     expect(html).toContain('$50')
     expect(html).toContain('$300')
     expect(html).toContain('1 из 2 дня')
-    expect(html).toContain('нет данных 3 окт.')
+    expect(html).toContain('нет данных 3 окт. 2026')
     expect(html).toContain('aria-label="Доля оборота: Polymarket 20%, Kalshi 80%"')
     expect(html).toContain('по 1 общему дню')
     expect(html.match(/data-caveat="true"/g)).toHaveLength(2)

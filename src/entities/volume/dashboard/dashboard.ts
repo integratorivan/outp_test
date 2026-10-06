@@ -46,6 +46,7 @@ export type CategoryChartPoint = {
   values: Partial<Record<DashboardCategory, number | null>>
   /** The known sum is missing data from a selected platform. */
   partial?: boolean
+  missingPlatforms?: readonly Platform[]
 }
 export type CategorySelection = { points: CategoryChartPoint[]; granularity: VolumeGranularity; period: VolumePeriod | null }
 
@@ -398,11 +399,15 @@ function aggregateCategoryWeeks(points: readonly CategoryChartPoint[], categorie
         total: point.total,
         values: { ...point.values },
         ...(point.partial ? { partial: true } : {}),
+        ...(point.missingPlatforms ? { missingPlatforms: point.missingPlatforms } : {}),
       }
       weeks.push(week)
     } else {
       week.endDay = point.day
       week.partial = week.partial || point.partial
+      if (point.missingPlatforms?.length) {
+        week.missingPlatforms = [...new Set([...(week.missingPlatforms ?? []), ...point.missingPlatforms])]
+      }
       const values: CategoryChartPoint['values'] = {}
       for (const category of categories) {
         const previous = week.values[category] ?? null
@@ -428,15 +433,16 @@ function selectCategorySelection(
   const from = granularity === 'week' ? weeklyChartFrom(window.from, rows) : window.from
   const selected = selectCategoryChartPoints(rows, { categories, startDay: from, endDay: to })
   const coverage = new Map(selectChartPoints(rows, { categories, startDay: from, endDay: to })
-    .map((point) => [point.day, platforms.every((platform) => point[platform] !== null)]))
+    .map((point) => [point.day, platforms.filter((platform) => point[platform] === null)]))
 
   const byDay = new Map(selected.map((point) => [point.day, point]))
   const points: CategoryChartPoint[] = []
   for (let day = from; day <= to; day = shiftDay(day, 1)) {
     const source = byDay.get(day)
+    const missingPlatforms = coverage.get(day) ?? platforms
     points.push(source
-      ? { ...source, endDay: day, partial: !coverage.get(day) }
-      : { day, endDay: day, total: null, values: emptyCategoryValues(categories), partial: true })
+      ? { ...source, endDay: day, partial: missingPlatforms.length > 0, ...(missingPlatforms.length ? { missingPlatforms } : {}) }
+      : { day, endDay: day, total: null, values: emptyCategoryValues(categories), partial: true, missingPlatforms })
   }
 
   const displayed = granularity === 'week'

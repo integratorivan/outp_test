@@ -47,8 +47,9 @@ describe('compact category tooltip', () => {
   it('limits rows only after ranking known selected categories', () => {
     const source = point('2026-09-30', { sports: 100, crypto: 80, other: 30, finance: 20, politics: 5, weather: 0, culture: null }, 235)
     const rows = buildCategoryTooltipRows({ point: source, categories: ['finance', 'politics', 'weather', 'culture', 'other', 'crypto', 'sports'], limit: 3 })
-    expect(rows.map((row) => row.category)).toEqual(['sports', 'crypto', 'other'])
-    expect(rows.map((row) => row.value)).toEqual([100, 80, 30])
+    expect(rows.map((row) => row.category)).toEqual(['sports', 'crypto', 'other', null])
+    expect(rows.map((row) => row.value)).toEqual([100, 80, 30, 25])
+    expect(rows.reduce((sum, row) => sum + row.value, 0)).toBe(source.total)
   })
 
   it('does not pad the tooltip when fewer than three categories have data', () => {
@@ -74,7 +75,9 @@ describe('desktop category tooltip', () => {
       categories: ['finance', 'politics', 'weather', 'culture', 'other', 'crypto', 'sports', 'technology'],
       limit: 5,
     })
-    expect(rows.map((row) => row.category)).toEqual(['sports', 'crypto', 'other', 'finance', 'politics'])
+    expect(rows.map((row) => row.category)).toEqual(['sports', 'crypto', 'other', 'finance', 'politics', null])
+    expect(rows.at(-1)).toEqual({ category: null, value: 3, share: 3 / 238 })
+    expect(rows.reduce((sum, row) => sum + row.value, 0)).toBe(source.total)
   })
 })
 
@@ -117,6 +120,11 @@ describe('category tooltip position', () => {
 })
 
 describe('category area geometry', () => {
+  it.each([0, 18, 26, 44])('keeps plot bounds ordered during a narrow layout at width %s', (width) => {
+    const geometry = buildCategoryChartGeometry({ points, categories: ['sports', 'politics'], width, height: 280 })
+    expect(geometry.right).toBeGreaterThanOrEqual(geometry.left)
+    expect(geometry.pointXs.every((x) => Number.isFinite(x) && x >= geometry.left && x <= geometry.right)).toBe(true)
+  })
   it('stacks categories in the given order with the largest at the bottom', () => {
     const geometry = buildCategoryChartGeometry({ points, categories: ['sports', 'politics'], width: 800, height: 336 })
     const sports = geometry.areas[0]

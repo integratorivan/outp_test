@@ -11,6 +11,17 @@ const day = daySchema.parse('2026-09-28')
 const endDay = daySchema.parse('2026-10-04')
 
 describe('platform chart date label', () => {
+  it('does not emit negative SVG widths before the container reaches its final size', () => {
+    const html = renderToStaticMarkup(createElement(VolumeChart, {
+      points: [{ day, endDay: day, kalshi: 10, polymarket: 20 }],
+      visiblePlatforms: ['kalshi', 'polymarket'],
+      granularity: 'day',
+      scale: 'linear',
+      svgRef: createRef<SVGSVGElement>(),
+      plotWidth: 18,
+    }))
+    expect(html).not.toMatch(/<rect[^>]*width="-/)
+  })
   it.each(['day', 'week'] as const)('reserves a label above the plot for the selected %s', (granularity) => {
     const point: VolumePoint = {
       day,

@@ -58,14 +58,14 @@ describe('category chart interaction', () => {
   })
 
   it('marks known sums with missing platform data instead of calling them complete totals', () => {
-    const html = renderChart({ day, endDay: day, total: 235, values: { sports: 235 }, partial: true })
-    expect(html).toContain('Известный оборот: $235. Неполные данные.')
+    const html = renderChart({ day, endDay: day, total: 235, values: { sports: 235 }, partial: true, missingPlatforms: ['kalshi'] })
+    expect(html).toContain('Известный оборот: $235. нет данных Kalshi.')
     expect(html).not.toContain('Итого:')
   })
 
   it('dashes a partial point with a pale fill', () => {
-    const html = renderChart({ day, endDay: day, total: 20, values: { sports: 20 }, partial: true })
-    expect(html).toContain('Известный оборот: $20. Неполные данные.')
+    const html = renderChart({ day, endDay: day, total: 20, values: { sports: 20 }, partial: true, missingPlatforms: ['polymarket'] })
+    expect(html).toContain('Известный оборот: $20. нет данных Polymarket.')
     expect(html).toContain('stroke-dasharray="5 5"')
     expect(html).toContain('category-partial-fill')
     expect(html).not.toContain('неполная неделя')

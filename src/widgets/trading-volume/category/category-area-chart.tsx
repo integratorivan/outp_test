@@ -61,8 +61,11 @@ export function CategoryAreaChart({ points, orderedCategories, categories, granu
     limit: compactTooltip ? 3 : 5,
   })
   const showTooltip = active && tooltipRows.length > 0
+  const missingLabel = selected?.partial
+    ? `нет данных${selected.missingPlatforms?.length ? ` ${selected.missingPlatforms.map((platform) => platform === 'kalshi' ? 'Kalshi' : 'Polymarket').join(', ')}` : ''}`
+    : null
   const valueText = selected && selected.total !== null
-    ? `${formatPeriod(selected.day, selected.endDay)} ${selected.partial ? 'Известный оборот' : 'Итого'}: ${formatUsd(selected.total)}.${selected.partial ? ' Неполные данные.' : ''}`
+    ? `${formatPeriod(selected.day, selected.endDay)} ${selected.partial ? 'Известный оборот' : 'Итого'}: ${formatUsd(selected.total)}.${missingLabel ? ` ${missingLabel}.` : ''}`
     : 'Нет данных'
 
   useLayoutEffect(() => {
@@ -227,7 +230,7 @@ export function CategoryAreaChart({ points, orderedCategories, categories, granu
                 <span className="whitespace-nowrap font-mono font-semibold tabular-nums">
                   {selected.partial ? 'Известный оборот' : 'Всего'} <span className="inline-block w-[8ch] text-right">{formatUsdCompact(selected.total ?? 0)}</span>
                 </span>
-                {selected.partial && <span className="text-muted-foreground">Неполные данные</span>}
+                {missingLabel && <span className="text-muted-foreground">{missingLabel}</span>}
               </div>
             )}
             <ul className={cn(
@@ -236,15 +239,15 @@ export function CategoryAreaChart({ points, orderedCategories, categories, granu
             )}>
               {tooltipRows.map((row) => (
                 <li
-                  key={row.category}
+                  key={row.category ?? 'remainder'}
                   className={cn(
                     'grid min-h-6 grid-cols-subgrid items-center text-xs leading-4',
                     compactTooltip ? 'col-span-3' : 'col-span-4',
                     row.value === 0 ? 'text-muted-foreground' : 'text-foreground',
                   )}
                 >
-                  <span className={cn('size-2 rounded-full', dashboardCategoryColor[row.category].dot)} aria-hidden="true" />
-                  <span className="min-w-0 whitespace-normal break-words">{dashboardCategoryLabels[row.category]}</span>
+                  <span className={cn('size-2 rounded-full', row.category ? dashboardCategoryColor[row.category].dot : 'bg-muted-foreground')} aria-hidden="true" />
+                  <span className="min-w-0 whitespace-normal break-words">{row.category ? dashboardCategoryLabels[row.category] : 'Остальные'}</span>
                   <span className="w-[8ch] whitespace-nowrap text-right font-mono font-semibold tabular-nums">{formatUsdCompact(row.value)}</span>
                   {!compactTooltip && (
                     <span className="w-[6ch] whitespace-nowrap text-right font-mono tabular-nums text-muted-foreground sm:w-14">{formatShare(row.share)}</span>

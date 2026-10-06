@@ -22,4 +22,8 @@ describe('data source configuration', () => {
   it.each(['0', '-1', '123abc', '', '1.5'])('rejects invalid query ID %s', (id) => {
     expect(() => readAppConfig({ ...env, VITE_DUNE_KALSHI_QUERY_ID: id })).toThrow()
   })
+
+  it.each([undefined, '', '   '])('rejects a missing or blank Dune key', (key) => {
+    expect(() => readAppConfig({ ...env, VITE_DUNE_API_KEY: key })).toThrow()
+  })
 })

@@ -90,11 +90,11 @@ export function formatCompactPeriod(start: Day, end: Day) {
 function formatMissingRange(start: Day, end: Day) {
   const first = new Date(start)
   const last = new Date(end)
-  if (start === end) return tickFormatter.format(first)
+  if (start === end) return `${tickFormatter.format(first)} ${first.getUTCFullYear()}`
   if (first.getUTCFullYear() === last.getUTCFullYear() && first.getUTCMonth() === last.getUTCMonth()) {
-    return `${first.getUTCDate()}–${tickFormatter.format(last)}`
+    return `${first.getUTCDate()}–${tickFormatter.format(last)} ${last.getUTCFullYear()}`
   }
-  return `${tickFormatter.format(first)} — ${tickFormatter.format(last)}`
+  return `${tickFormatter.format(first)} ${first.getUTCFullYear()} — ${tickFormatter.format(last)} ${last.getUTCFullYear()}`
 }
 
 export function formatAvailableDays(available: number, expected: number) {

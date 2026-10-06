@@ -1,14 +1,14 @@
 import { useState } from 'react'
 
+import type { VolumeRepository } from '../entities/volume/data/repository'
 import type { Platform } from '../entities/volume/model'
 import { dashboardCategories } from '../entities/volume/categories'
 import { useVolumeFilters } from '../features/volume-filters/use-volume-filters'
 import { DashboardHeader } from '../widgets/dashboard-header/dashboard-header'
 import { TradingVolume } from '../widgets/trading-volume/trading-volume'
 import { useVolumeDashboard } from '../widgets/trading-volume/use-volume-dashboard'
-import { volumeRepository } from './volume-repository'
 
-export function App() {
+export function App({ volumeRepository }: { volumeRepository: VolumeRepository }) {
   const { filters, draftWindow, setWindow, setCategories, setView, setGranularity } =
     useVolumeFilters()
   const [visiblePlatforms, setVisiblePlatforms] = useState<readonly Platform[]>(['kalshi', 'polymarket'])

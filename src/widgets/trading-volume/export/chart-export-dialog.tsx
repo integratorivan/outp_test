@@ -151,6 +151,7 @@ export function ChartExportDialog({
         <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,17rem)_minmax(0,1fr)]">
           <div className="flex min-w-0 flex-col gap-2">
             <Button
+              nativeButton={false}
               variant="outline"
               className="w-full"
               render={<a href={shareUrl} target="_blank" rel="noopener noreferrer" />}

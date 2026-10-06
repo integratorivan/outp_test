@@ -485,7 +485,7 @@ describe('category dashboard selection', () => {
     expect(result.points).toHaveLength(3)
     const byDay = new Map(result.points.map((point) => [String(point.day), point]))
     expect(byDay.get('2026-09-28')).toEqual({ day: '2026-09-28', endDay: '2026-09-28', total: 30, values: { sports: 30, politics: 0 }, partial: false })
-    expect(byDay.get('2026-09-29')).toEqual({ day: '2026-09-29', endDay: '2026-09-29', total: null, values: { sports: null, politics: null }, partial: true })
+    expect(byDay.get('2026-09-29')).toEqual({ day: '2026-09-29', endDay: '2026-09-29', total: null, values: { sports: null, politics: null }, partial: true, missingPlatforms: ['kalshi', 'polymarket'] })
     expect(byDay.get('2026-09-30')?.values).toEqual({ sports: 0, politics: 5 })
     expect(byDay.get('2026-09-30')?.partial).toBe(true)
   })
@@ -496,6 +496,8 @@ describe('category dashboard selection', () => {
     const byDay = new Map(result.points.map((point) => [String(point.day), point]))
     expect(byDay.get('2026-09-28')?.values.sports).toBe(10)
     expect(byDay.get('2026-09-29')?.values.sports).toBe(20)
+    expect(byDay.get('2026-09-28')?.missingPlatforms).toEqual(['polymarket'])
+    expect(byDay.get('2026-09-29')?.missingPlatforms).toEqual(['kalshi'])
     expect(result.points.every((point) => point.partial)).toBe(true)
   })
 
@@ -515,7 +517,7 @@ describe('category dashboard selection', () => {
       .map((item) => ({ ...item, platform: 'polymarket' } satisfies DashboardVolumeRow))
     const rows = [...kalshi, ...polymarket]
     const result = selectCategories(rows, preset(rows, 'all'), ['sports'], undefined, 'week')
-    expect(result.points[0]).toMatchObject({ total: 130, values: { sports: 130 }, partial: true })
+    expect(result.points[0]).toMatchObject({ total: 130, values: { sports: 130 }, partial: true, missingPlatforms: ['polymarket'] })
     expect(result.points[1]).toMatchObject({ total: 140, partial: false })
   })
 
@@ -529,7 +531,7 @@ describe('category dashboard selection', () => {
 
     const withGap = history('2026-09-28', 35).filter((item) => item.day !== '2026-09-30')
     const gapped = selectCategories(withGap, preset(withGap, 'all'), ['sports'], ['kalshi'], 'week')
-    expect(gapped.points[0]).toEqual({ day: '2026-09-28', endDay: '2026-10-04', total: null, values: { sports: null }, partial: true })
+    expect(gapped.points[0]).toEqual({ day: '2026-09-28', endDay: '2026-10-04', total: null, values: { sports: null }, partial: true, missingPlatforms: ['kalshi'] })
   })
 
   it('distinguishes empty source history from an empty category selection', () => {

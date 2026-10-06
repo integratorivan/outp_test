@@ -123,8 +123,8 @@ export function buildChartGeometry({ points, visiblePlatforms, width, height, sc
   scale?: ChartScale
   domain?: number
 }) {
-  const left = width < 480 ? 44 : 64
-  const right = width - (width < 480 ? 8 : 16)
+  const left = Math.min(width, width < 480 ? 44 : 64)
+  const right = Math.max(left, width - (width < 480 ? 8 : 16))
   const top = 16
   const bottom = height - 40
   const times = points.map((point) => Date.parse(point.day))

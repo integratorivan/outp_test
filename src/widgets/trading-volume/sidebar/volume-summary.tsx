@@ -124,7 +124,7 @@ function VolumeShareBar({
       role="img"
       aria-label={`Доля оборота: Polymarket ${polymarketLabel}, Kalshi ${kalshiLabel}`}
     >
-      <span className="shrink-0 font-mono text-[11px] leading-4 text-platform-polymarket tabular-nums">{polymarketLabel}</span>
+      <span className="shrink-0 font-mono text-[11px] leading-4 text-platform-polymarket-text tabular-nums">{polymarketLabel}</span>
       <span className="flex h-1 min-w-0 flex-1 overflow-hidden rounded-full" aria-hidden="true">
         <span className="h-full bg-platform-polymarket" style={{ width: `${polymarket * 100}%` }} />
         <span className="h-full bg-platform-kalshi" style={{ width: `${kalshi * 100}%` }} />

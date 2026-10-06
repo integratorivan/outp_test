@@ -23,10 +23,13 @@ export function buildCategoryTooltipRows({ point, categories, limit }: {
 }) {
   if (!point || point.total === null) return []
   const total = point.total
-  return categories.flatMap((category) => {
+  const rows: { category: DashboardCategory | null; value: number; share: number }[] = categories.flatMap((category) => {
     const value = point.values[category]
     return value == null ? [] : [{ category, value, share: total > 0 ? value / total : 0 }]
-  }).sort((left, right) => right.value - left.value).slice(0, limit)
+  }).sort((left, right) => right.value - left.value)
+  if (limit === undefined || rows.length <= limit) return rows
+  const remainder = rows.slice(limit).reduce((sum, row) => sum + row.value, 0)
+  return [...rows.slice(0, limit), { category: null, value: remainder, share: total > 0 ? remainder / total : 0 }]
 }
 
 /** Clears the absolute date label in the chart's `pt-5` band. */
@@ -60,8 +63,8 @@ export function buildCategoryChartGeometry({ points, categories, width, height, 
   height: number
   domain?: number
 }) {
-  const left = width < 480 ? 44 : 64
-  const right = width - (width < 480 ? 8 : 16)
+  const left = Math.min(width, width < 480 ? 44 : 64)
+  const right = Math.max(left, width - (width < 480 ? 8 : 16))
   const top = 16
   const bottom = height - 40
   const times = points.map((point) => Date.parse(point.day))

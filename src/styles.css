@@ -43,6 +43,7 @@
   --control-hover: color-mix(in srgb, var(--content) 4%, transparent);
   --platform-kalshi: #28cc95;
   --platform-polymarket: #3362ff;
+  --platform-polymarket-text: var(--platform-polymarket);
   --category-sports: #34c9a1;
   --category-politics: #f47d8c;
   --category-crypto: #e09a2e;
@@ -118,6 +119,7 @@
   --surface-raised: #17171c;
   --platform-kalshi: #28cc95;
   --platform-polymarket: #3362ff;
+  --platform-polymarket-text: #6d8fff;
   --category-sports: #48d6ad;
   --category-politics: oklch(0.72 0.16 25);
   --category-crypto: oklch(0.78 0.16 75);
@@ -184,6 +186,7 @@
   --color-on-brand: var(--on-brand);
   --color-platform-kalshi: var(--platform-kalshi);
   --color-platform-polymarket: var(--platform-polymarket);
+  --color-platform-polymarket-text: var(--platform-polymarket-text);
   --color-category-sports: var(--category-sports);
   --color-category-politics: var(--category-politics);
   --color-category-crypto: var(--category-crypto);
