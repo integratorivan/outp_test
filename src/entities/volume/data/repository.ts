@@ -17,13 +17,13 @@ export class VolumeRepository {
   async load(platform: Platform, signal: AbortSignal) {
     const snapshot = await this.source.load(platform, signal)
     signal.throwIfAborted()
-    if (this.source.mode === 'dune') await writeVolumeSnapshot(snapshot)
+    await writeVolumeSnapshot(snapshot)
     return snapshot
   }
 
   async readCached(platform: Platform) {
     const queryId = this.source.queryId(platform)
-    if (this.source.mode !== 'dune' || queryId === null) return undefined
+    if (queryId === null) return undefined
     const snapshot = await readVolumeSnapshot(platform, queryId)
     return snapshot && Date.now() - snapshot.downloadedAt < volumeCacheConfig.maxAgeMs
       ? snapshot

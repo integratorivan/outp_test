@@ -38,14 +38,15 @@ describe('platform chart date label', () => {
   it('labels the actual dates and duration of a partial calendar week', () => {
     const lastDay = daySchema.parse('2026-10-01')
     const html = renderToStaticMarkup(createElement(VolumeChart, {
-      points: [{ day, endDay: lastDay, kalshi: 40, polymarket: 0 }],
+      points: [{ day, endDay: lastDay, kalshi: 10, polymarket: 0, kalshiDays: 4, kalshiTotal: 40, polymarketDays: 4, polymarketTotal: 0 }],
       visiblePlatforms: ['kalshi', 'polymarket'],
       granularity: 'week',
       scale: 'linear',
       svgRef: createRef<SVGSVGElement>(),
     }))
     expect(html).toContain(`${formatCompactPeriod(day, lastDay)} · 4 дня`)
-    expect(html).toContain('Kalshi: $40. Polymarket: $0.')
+    expect(html).toContain('≈$10/день')
+    expect(html).not.toContain('всего')
     expect(html).not.toContain('04.10.26')
   })
 
@@ -53,8 +54,8 @@ describe('platform chart date label', () => {
     const lastDay = daySchema.parse('2026-10-01')
     const html = renderToStaticMarkup(createElement(VolumeChart, {
       points: [
-        { day: daySchema.parse('2026-09-21'), endDay: daySchema.parse('2026-09-27'), kalshi: 70, polymarket: 0 },
-        { day, endDay: lastDay, kalshi: 40, polymarket: 0, incompleteWeek: true },
+        { day: daySchema.parse('2026-09-21'), endDay: daySchema.parse('2026-09-27'), kalshi: 10, polymarket: 0, kalshiDays: 7, kalshiTotal: 70, polymarketDays: 7, polymarketTotal: 0 },
+        { day, endDay: lastDay, kalshi: 10, polymarket: 0, kalshiDays: 4, kalshiTotal: 40, polymarketDays: 4, polymarketTotal: 0, incompleteWeek: true, partialPlatforms: ['kalshi', 'polymarket'] },
       ],
       visiblePlatforms: ['kalshi', 'polymarket'],
       granularity: 'week',
@@ -62,20 +63,24 @@ describe('platform chart date label', () => {
       svgRef: createRef<SVGSVGElement>(),
     }))
     expect(html).toContain(`${formatCompactPeriod(day, lastDay)} · 4 дня`)
-    expect(html).toContain('Kalshi: $40. Polymarket: $0.')
+    expect(html).toContain('≈$10/день')
+    expect(html).not.toContain('всего')
     expect(html).toContain('stroke-dasharray="5 5"')
+    expect(html).toContain('>в день</text>')
     expect(html).not.toContain('неполная неделя')
   })
 
   it('labels a gapped week with a known sum as incomplete data', () => {
     const html = renderToStaticMarkup(createElement(VolumeChart, {
-      points: [{ day, endDay, kalshi: 40, polymarket: 20, partial: true }],
+      points: [{ day, endDay, kalshi: 10, polymarket: 5, kalshiDays: 4, kalshiTotal: 40, polymarketDays: 4, polymarketTotal: 20, partial: true, partialPlatforms: ['kalshi'] }],
       visiblePlatforms: ['kalshi', 'polymarket'],
       granularity: 'week',
       scale: 'linear',
       svgRef: createRef<SVGSVGElement>(),
     }))
     expect(html).toContain(`${formatCompactPeriod(day, endDay)} · неполные данные`)
-    expect(html).toContain('Kalshi: $40. Polymarket: $20.')
+    expect(html).toContain('≈$10/день')
+    expect(html).toContain('≈$5/день')
+    expect(html).not.toContain('всего')
   })
 })

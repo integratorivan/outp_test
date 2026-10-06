@@ -105,6 +105,11 @@ export function formatAvailableDays(available: number, expected: number) {
   return `${available} из ${expected} ${dayForms[daysPlural.select(expected)] ?? 'дней'}`
 }
 
+/** Week-mode chart tooltip: daily average only. */
+export function formatWeeklyDailyAverage(average: number) {
+  return `≈${formatUsdCompact(average)}/день`
+}
+
 export function formatMissingDaysLabel(missingDays: readonly Day[]) {
   if (missingDays.length === 0) return null
   const ranges: string[] = []

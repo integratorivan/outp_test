@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 
 import { dashboardCategories } from '../../entities/volume/categories'
-import { CategoryFilters, CategoryFiltersSkeleton } from './category-filters'
+import { CategoryFilters, CategoryFiltersSkeleton, orderCategoryList } from './category-filters'
 
 function renderCategories(selected: readonly (typeof dashboardCategories)[number][]) {
   return renderToStaticMarkup(createElement(CategoryFilters, {
@@ -63,6 +63,19 @@ describe('category buttons', () => {
       const html = renderCategories(selected)
       expect(html.match(/<span class="w-\[8ch\] shrink-0 text-right /g)).toHaveLength(dashboardCategories.length)
     }
+  })
+
+  it('ranks selected amounts descending and leaves missing amounts in place', () => {
+    expect(orderCategoryList(
+      ['politics', 'combo', 'finance', 'sports'],
+      { politics: 94_900_000, combo: 938_000_000, finance: 317_000_000, sports: 94_900_000 },
+      ['politics', 'combo', 'finance', 'sports'],
+    )).toEqual(['combo', 'finance', 'politics', 'sports'])
+    expect(orderCategoryList(
+      ['politics', 'combo', 'finance'],
+      { politics: 94_900_000, combo: 938_000_000, finance: 317_000_000 },
+      ['politics'],
+    )).toEqual(['politics', 'combo', 'finance'])
   })
 
   it('keeps all buttons available when no categories are selected', () => {

@@ -37,6 +37,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from '../../shared/ui/tabs'
 import { ToggleGroup, ToggleGroupItem } from '../../shared/ui/toggle-group'
 import { cn } from '../../shared/ui/utils'
+import { orderCategoryList } from '../category-filters/category-filters'
 import { CategoryAreaChart } from './category/category-area-chart'
 import { CategoryBreakdownSkeleton, CategoryBreakdownTable } from './category/category-breakdown-table'
 import { ChartExportDialog } from './export/chart-export-dialog'
@@ -181,11 +182,15 @@ export function TradingVolume({
     [dashboard.categoryPoints],
   )
   const categoryTotals = useMemo(
-    () => Object.fromEntries(dashboard.categoryBreakdown.rows.map((row) => {
+    (): Partial<Record<DashboardCategory, number | null>> => Object.fromEntries(dashboard.categoryBreakdown.rows.map((row) => {
       const values = chartPlatforms.flatMap((platform) => row[platform] === null ? [] : [row[platform]])
       return [row.category, values.length ? values.reduce((sum, value) => sum + value, 0) : null]
     })),
     [dashboard.categoryBreakdown, chartPlatforms],
+  )
+  const categoryList = useMemo(
+    () => orderCategoryList(dashboard.orderedCategories, categoryTotals, selectedCategories),
+    [dashboard.orderedCategories, categoryTotals, selectedCategories],
   )
   const period = view === 'categories' ? dashboard.categoryPeriod : dashboard.period
   const hasChartData = view === 'categories' ? hasVisibleCategoryData : hasVisibleData
@@ -316,6 +321,7 @@ export function TradingVolume({
       <VolumeSidebar
         dashboard={dashboard}
         selectedCategories={selectedCategories}
+        orderedCategories={categoryList}
         values={view === 'categories' && activeCategoryPoint ? activeCategoryPoint.values : categoryTotals}
         periodLabel={view === 'categories' && activeCategoryPoint
           ? formatPeriod(activeCategoryPoint.day, activeCategoryPoint.endDay)

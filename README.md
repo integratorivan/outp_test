@@ -56,6 +56,5 @@ ID запросов Dune уже прописаны в `.env.example`. Нужен
 | `npm test` | Vitest |
 | `npm run typecheck` | TypeScript |
 | `npm run build` / `npm run preview` | production-сборка |
-| `npm run fixtures:update` | локально скачать fixtures из Dune (в git не лежат) |
 
 Стек и правила для агентов: [docs/agents.md](docs/agents.md). Подробности слоёв данных и UI: [docs/architecture.md](docs/architecture.md).

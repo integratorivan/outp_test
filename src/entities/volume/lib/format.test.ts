@@ -14,6 +14,7 @@ import {
   formatUsdTick,
   formatUsdSummary,
   formatVolumeChange,
+  formatWeeklyDailyAverage,
 } from './format'
 import { daySchema } from '../model'
 
@@ -28,6 +29,11 @@ describe('chart axis formatting', () => {
 
   it('formats symlog ticks in compact USD units', () => {
     expect([1_000_000, 10_000_000, 100_000_000, 1_000_000_000].map(formatUsdTick)).toEqual(['$1M', '$10M', '$100M', '$1B'])
+  })
+
+  it('formats week-mode tooltip as daily average', () => {
+    expect(formatWeeklyDailyAverage(517_000_000)).toBe('≈$517M/день')
+    expect(formatWeeklyDailyAverage(100_000_000)).toBe('≈$100M/день')
   })
 })
 

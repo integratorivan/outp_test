@@ -170,9 +170,8 @@ export function buildChartGeometry({ points, visiblePlatforms, width, height, sc
       }
       const connected = previous !== undefined && Date.parse(point.day) - Date.parse(previous.endDay) <= dayMs
       const position = { x: x(point.day), y: y(value) }
-      // A short trailing week is incomplete for every series. A gap dashes only the platform that is missing days.
-      const platformGap = point.partialPlatforms ? point.partialPlatforms.includes(platform) : Boolean(point.partial)
-      if (point.incompleteWeek || platformGap) {
+      // Gaps and trailing stubs dash only the listed platforms so one series cannot mark the other.
+      if (point.partialPlatforms?.includes(platform)) {
         finishSegment()
         if (connected && previousPosition) {
           segment = [previousPosition, position]

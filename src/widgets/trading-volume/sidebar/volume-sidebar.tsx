@@ -30,12 +30,13 @@ function serverDesktop() {
 type VolumeSidebarProps = {
   dashboard: VolumeDashboard
   selectedCategories: readonly DashboardCategory[]
+  orderedCategories: readonly DashboardCategory[]
   values: CategoryChartPoint['values']
   periodLabel: string
   onToggleCategory: (category: DashboardCategory) => void
 }
 
-export function VolumeSidebar({ dashboard, selectedCategories, values, periodLabel, onToggleCategory }: VolumeSidebarProps) {
+export function VolumeSidebar({ dashboard, selectedCategories, orderedCategories, values, periodLabel, onToggleCategory }: VolumeSidebarProps) {
   const desktop = useSyncExternalStore(subscribeDesktop, isDesktop, serverDesktop)
   const [expanded, setExpanded] = useState(false)
   const loading = dashboard.isLoading
@@ -86,7 +87,7 @@ export function VolumeSidebar({ dashboard, selectedCategories, values, periodLab
                       <Skeleton className="h-3 w-8" aria-hidden="true" />
                     ) : (
                       <span className="font-mono text-[11px] text-muted-foreground tabular-nums">
-                        {selectedCategories.length}/{dashboard.orderedCategories.length}
+                        {selectedCategories.length}/{orderedCategories.length}
                       </span>
                     )}
                     <ChevronDown
@@ -104,7 +105,7 @@ export function VolumeSidebar({ dashboard, selectedCategories, values, periodLab
                 ) : (
                   <CategoryFilters
                     selected={selectedCategories}
-                    orderedCategories={dashboard.orderedCategories}
+                    orderedCategories={orderedCategories}
                     values={values}
                     onToggleCategory={onToggleCategory}
                   />

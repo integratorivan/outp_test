@@ -29,10 +29,15 @@ export type VolumePoint = ChartPoint & {
   endDay: Day
   /** Trailing calendar week shorter than 7 days inside the selected window. */
   incompleteWeek?: boolean
-  /** Weekly sum uses only known days; at least one platform is missing a calendar day in the bucket. */
+  /** Weekly average uses only known days; at least one platform is missing a calendar day in the bucket. */
   partial?: boolean
-  /** Platforms whose weekly sum omits at least one calendar day. Drives the dashed stroke. */
+  /** Platforms whose week omits at least one calendar day. Drives the dashed stroke per series. */
   partialPlatforms?: readonly Platform[]
+  /** Known days and week totals before daily averaging; set only in week mode. */
+  kalshiDays?: number
+  polymarketDays?: number
+  kalshiTotal?: number
+  polymarketTotal?: number
 }
 export type VolumePeriod = { startDay: Day; endDay: Day }
 export type VolumeSelection = { points: VolumePoint[]; granularity: VolumeGranularity; period: VolumePeriod | null }
@@ -234,6 +239,19 @@ export function markTrailingIncompleteWeek<T extends { day: Day; endDay: Day; in
   return points.map((point, index) => index === points.length - 1 ? { ...point, incompleteWeek: true } : point)
 }
 
+/** Dashes each platform that has a value on a trailing incomplete week, without affecting the other series. */
+export function markIncompleteWeekPlatforms(points: readonly VolumePoint[]): VolumePoint[] {
+  return points.map((point) => {
+    if (!point.incompleteWeek) return point
+    const partialPlatforms = new Set(point.partialPlatforms ?? [])
+    if (point.kalshi !== null) partialPlatforms.add('kalshi')
+    if (point.polymarket !== null) partialPlatforms.add('polymarket')
+    if (partialPlatforms.size === 0) return point
+    // Keep `partial` for true data gaps only; short trailing weeks still use incompleteWeek + day count in the label.
+    return { ...point, partialPlatforms: [...partialPlatforms] }
+  })
+}
+
 /**
  * Drops trailing incomplete-week days from KPI / Δ windows when the chart is weekly.
  * The leading edge week stays included so early history is not silently discarded.
@@ -264,8 +282,18 @@ export function aggregateVolumeWeeks(points: readonly VolumePoint[]): VolumePoin
   function finishWeek() {
     if (!week) return
     const partialPlatforms: Platform[] = []
-    if (week.kalshi !== null && kalshiDays < bucketDays) partialPlatforms.push('kalshi')
-    if (week.polymarket !== null && polymarketDays < bucketDays) partialPlatforms.push('polymarket')
+    if (week.kalshi !== null) {
+      week.kalshiTotal = week.kalshi
+      week.kalshiDays = kalshiDays
+      week.kalshi = kalshiDays > 0 ? week.kalshi / kalshiDays : null
+      if (kalshiDays < bucketDays) partialPlatforms.push('kalshi')
+    }
+    if (week.polymarket !== null) {
+      week.polymarketTotal = week.polymarket
+      week.polymarketDays = polymarketDays
+      week.polymarket = polymarketDays > 0 ? week.polymarket / polymarketDays : null
+      if (polymarketDays < bucketDays) partialPlatforms.push('polymarket')
+    }
     if (partialPlatforms.length === 0) return
     week.partial = true
     week.partialPlatforms = partialPlatforms
@@ -311,7 +339,7 @@ function selectVolumeSelection(
   }
 
   const displayed = granularity === 'week'
-    ? markTrailingIncompleteWeek(aggregateVolumeWeeks(points), to)
+    ? markIncompleteWeekPlatforms(markTrailingIncompleteWeek(aggregateVolumeWeeks(points), to))
     : points
   const displayedStart = displayed[0]?.day
   const displayedEnd = displayed.at(-1)?.endDay

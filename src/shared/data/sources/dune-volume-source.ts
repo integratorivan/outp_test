@@ -5,11 +5,11 @@ import type { AppConfig } from '../../config/schema'
 import type { VolumeDataSource } from '../volume-data-source'
 
 export class DuneVolumeDataSource implements VolumeDataSource {
-  readonly mode = 'dune'
+  readonly mode = 'dune' as const
 
   private readonly service: DuneApiService
 
-  constructor(private readonly config: Extract<AppConfig, { dataMode: 'dune' }>) {
+  constructor(private readonly config: AppConfig) {
     this.service = new DuneApiService({ baseUrl: config.duneBaseUrl, apiKey: config.duneApiKey })
   }
 

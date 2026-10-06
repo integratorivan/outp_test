@@ -7,7 +7,7 @@ import type { VolumeRepository } from './repository'
 export function volumeSnapshotQuery(repository: VolumeRepository, platform: Platform) {
   return queryOptions({
     queryKey: repository.key(platform),
-    staleTime: repository.mode === 'fixture' ? Infinity : volumeCacheConfig.staleTimeMs,
+    staleTime: volumeCacheConfig.staleTimeMs,
     queryFn: ({ signal }) => repository.load(platform, signal),
   })
 }

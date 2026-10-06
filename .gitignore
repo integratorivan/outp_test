@@ -8,4 +8,3 @@ dist/
 !.env.example
 **/.DS_Store
 bun.lock
-src/shared/data/fixtures/*.json

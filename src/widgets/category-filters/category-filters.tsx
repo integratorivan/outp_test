@@ -21,6 +21,23 @@ const chipLabelWidths = [
   'w-14', 'w-20', 'w-12', 'w-14', 'w-10',
 ] as const
 
+/** Chip order follows the amounts on the chips, largest first. Missing amounts stay put. */
+export function orderCategoryList(
+  categories: readonly DashboardCategory[],
+  values: Partial<Record<DashboardCategory, number | null>>,
+  selected: readonly DashboardCategory[],
+): DashboardCategory[] {
+  const selectedSet = new Set(selected)
+  return [...categories].sort((left, right) => {
+    const leftValue = selectedSet.has(left) ? values[left] ?? null : null
+    const rightValue = selectedSet.has(right) ? values[right] ?? null : null
+    if (leftValue === null && rightValue === null) return 0
+    if (leftValue === null) return 1
+    if (rightValue === null) return -1
+    return rightValue - leftValue || categories.indexOf(left) - categories.indexOf(right)
+  })
+}
+
 export function CategoryFilters({
   selected,
   orderedCategories,

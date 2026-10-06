@@ -1,3 +1,5 @@
+import 'fake-indexeddb/auto'
+
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
@@ -5,13 +7,19 @@ import { describe, expect, it, vi } from 'vitest'
 
 import { dashboardCategories } from '../../entities/volume/categories'
 import { shiftDay, type DashboardFilters } from '../../entities/volume/dashboard/dashboard'
-import { daySchema, volumeSnapshotSchema, type Platform } from '../../entities/volume/model'
+import { daySchema, volumeSnapshotSchema, type Platform, type VolumeSnapshot } from '../../entities/volume/model'
 import { volumeSnapshotQuery } from '../../entities/volume/data/queries'
 import { VolumeRepository } from '../../entities/volume/data/repository'
-import { FixtureVolumeDataSource } from '../../shared/data/sources/fixture-volume-source'
+import type { VolumeDataSource } from '../../shared/data/volume-data-source'
 import { useVolumeDashboard, type VolumeDashboard } from './use-volume-dashboard'
 
 const defaults: DashboardFilters = { from: null, to: null, range: null, categories: dashboardCategories, view: 'platforms', scale: 'linear', granularity: 'day' }
+
+function stubVolumeSource(load: VolumeDataSource['load'] = async () => {
+  throw new Error('Unexpected volume load in dashboard unit test')
+}): VolumeDataSource {
+  return { mode: 'dune', queryId: () => null, load }
+}
 
 function renderDashboard(client: QueryClient, repository: VolumeRepository, filters = defaults, platforms: readonly Platform[] = ['kalshi', 'polymarket']) {
   let result: VolumeDashboard | undefined
@@ -26,7 +34,7 @@ function renderDashboard(client: QueryClient, repository: VolumeRepository, filt
 
 function withDashboardHistory(count: number, check: (render: (filters: DashboardFilters, platforms?: readonly Platform[]) => VolumeDashboard) => void) {
   const client = new QueryClient()
-  const repository = new VolumeRepository(new FixtureVolumeDataSource())
+  const repository = new VolumeRepository(stubVolumeSource())
   for (const platform of ['kalshi', 'polymarket'] satisfies Platform[]) {
     client.setQueryData(repository.key(platform), volumeSnapshotSchema.parse({
       platform, queryId: platform === 'kalshi' ? 1 : 2, executionId: 'test',
@@ -62,11 +70,11 @@ describe('dashboard source errors', () => {
     })
     const snapshots = { kalshi: snapshot('kalshi'), polymarket: snapshot('polymarket') }
     let failing = true
-    const load = vi.fn(async (name: Platform) => {
+    const load = vi.fn(async (name: Platform): Promise<VolumeSnapshot> => {
       if (failing) throw new Error('Source unavailable')
       return snapshots[name]
     })
-    const repository = new VolumeRepository({ mode: 'fixture', queryId: () => null, load })
+    const repository = new VolumeRepository(stubVolumeSource(load))
     const other = platform === 'kalshi' ? 'polymarket' : 'kalshi'
     client.setQueryData(repository.key(other), snapshots[other])
     if (cached) client.setQueryData(repository.key(platform), snapshots[platform])

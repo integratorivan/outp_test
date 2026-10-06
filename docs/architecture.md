@@ -8,7 +8,7 @@
   - `dashboard/`, `select/`, `lib/`, `data/`
 - `features/` — URL-фильтры и AI-анализ точки
 - `widgets/` — график, сайдбар, шапка, фильтры категорий
-- `shared/` — HTTP, Dune, локальные fixtures, IndexedDB, UI, тема
+- `shared/` — HTTP, Dune, IndexedDB, UI, тема
 
 ## Данные
 
@@ -18,8 +18,6 @@
 - `entities/volume/data/` — repository, TanStack query options, TTL кэша
 - `shared/storage/volume-cache.ts` — IndexedDB `outpoll-volume`
 - Фильтры периода и категорий считаются локально и query key snapshot не меняют
-
-Режим `VITE_DATA_MODE=fixture` только для локальной вёрстки. JSON в `src/shared/data/fixtures/` в git не хранятся; скачать: `npm run fixtures:update`.
 
 ## `server/`
 

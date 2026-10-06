@@ -51,7 +51,7 @@ describe('chart geometry', () => {
   it('dashes only the connector into a trailing incomplete week', () => {
     const weeks = [
       { ...point('2026-09-21', 10, 20), endDay: daySchema.parse('2026-09-27') },
-      { ...point('2026-09-28', 20, 40), endDay: daySchema.parse('2026-10-01'), incompleteWeek: true },
+      { ...point('2026-09-28', 20, 40), endDay: daySchema.parse('2026-10-01'), incompleteWeek: true, partial: true, partialPlatforms: ['kalshi', 'polymarket'] as const },
     ]
     const chart = geometry(weeks)
     expect(chart.series[0]?.segments).toHaveLength(2)
@@ -63,7 +63,7 @@ describe('chart geometry', () => {
   it('dashes a gapped week that still has a known sum', () => {
     const weeks = [
       { ...point('2026-09-21', 10, 20), endDay: daySchema.parse('2026-09-27') },
-      { ...point('2026-09-28', 40, 20), endDay: daySchema.parse('2026-10-04'), partial: true, partialPlatforms: ['kalshi', 'polymarket'] },
+      { ...point('2026-09-28', 40, 20), endDay: daySchema.parse('2026-10-04'), partial: true, partialPlatforms: ['kalshi', 'polymarket'] as const },
     ]
     const chart = geometry(weeks)
     expect(chart.series[0]?.segments[1]?.dashed).toBe(true)
@@ -74,7 +74,7 @@ describe('chart geometry', () => {
   it('keeps a complete platform solid when only the other platform is missing days', () => {
     const weeks = [
       { ...point('2026-09-21', 10, 20), endDay: daySchema.parse('2026-09-27') },
-      { ...point('2026-09-28', 40, 20), endDay: daySchema.parse('2026-10-04'), partial: true, partialPlatforms: ['kalshi'] },
+      { ...point('2026-09-28', 40, 20), endDay: daySchema.parse('2026-10-04'), partial: true, partialPlatforms: ['kalshi'] as const },
     ]
     const chart = geometry(weeks)
     expect(chart.series[0]?.segments[1]?.dashed).toBe(true)

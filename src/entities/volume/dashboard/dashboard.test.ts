@@ -230,7 +230,7 @@ describe('volume dashboard selection', () => {
     expect(result.points.every((point) => point.day === point.endDay)).toBe(true)
   })
 
-  it('sums calendar weeks including the actual dates at both history edges', () => {
+  it('averages calendar weeks including the actual dates at both history edges', () => {
     const rows = history('2026-01-01', 100).flatMap((item, index) => [
       { ...item, volumeUsd: index + 1 },
       { ...item, platform: 'polymarket', volumeUsd: (index + 1) * 2 } satisfies DashboardVolumeRow,
@@ -244,25 +244,44 @@ describe('volume dashboard selection', () => {
       expect(days).toHaveLength(index === 0 ? 8 : index === 14 ? 10 : 14)
       if (index > 0) expect(new Date(week.day).getUTCDay()).toBe(1)
       if (index < 14) expect(new Date(week.endDay).getUTCDay()).toBe(0)
-      expect(week.kalshi).toBe(days.filter((row) => row.platform === 'kalshi').reduce((sum, row) => sum + row.volumeUsd, 0))
-      expect(week.polymarket).toBe(days.filter((row) => row.platform === 'polymarket').reduce((sum, row) => sum + row.volumeUsd, 0))
+      const kalshiDays = days.filter((row) => row.platform === 'kalshi')
+      const polymarketDays = days.filter((row) => row.platform === 'polymarket')
+      const kalshiTotal = kalshiDays.reduce((sum, row) => sum + row.volumeUsd, 0)
+      const polymarketTotal = polymarketDays.reduce((sum, row) => sum + row.volumeUsd, 0)
+      expect(week).toMatchObject({
+        kalshi: kalshiTotal / kalshiDays.length,
+        polymarket: polymarketTotal / polymarketDays.length,
+        kalshiDays: kalshiDays.length,
+        polymarketDays: polymarketDays.length,
+        kalshiTotal,
+        polymarketTotal,
+      })
     }
     const breakdown = selectCategoryBreakdown(rows, weekly.period ?? {})
-    expect(breakdown.rows[0]?.total).toBe(weekly.points.reduce((sum, point) => sum + (point.kalshi ?? 0) + (point.polymarket ?? 0), 0))
+    expect(breakdown.rows[0]?.total).toBe(weekly.points.reduce((sum, point) => sum + (point.kalshiTotal ?? 0) + (point.polymarketTotal ?? 0), 0))
   })
 
-  it('preserves missing calendar days, platform gaps and confirmed zeros in weekly sums', () => {
+  it('preserves missing calendar days, platform gaps and confirmed zeros in weekly averages', () => {
     const kalshi = history('2026-01-01', 100).filter((item) => item.day !== '2026-03-18')
     const polymarket = history('2026-01-01', 100).map((item) => ({ ...item, platform: 'polymarket', volumeUsd: 0 } satisfies DashboardVolumeRow))
     const rows = [...kalshi, ...polymarket]
     const result = select(rows, preset(rows, 'all'), dashboardCategories, 'week')
     expect(result.points.find((point) => point.day === '2026-03-16')).toEqual({
-      day: '2026-03-16', endDay: '2026-03-22', kalshi: 60, polymarket: 0, partial: true, partialPlatforms: ['kalshi'],
+      day: '2026-03-16',
+      endDay: '2026-03-22',
+      kalshi: 10,
+      polymarket: 0,
+      kalshiDays: 6,
+      polymarketDays: 7,
+      kalshiTotal: 60,
+      polymarketTotal: 0,
+      partial: true,
+      partialPlatforms: ['kalshi'],
     })
     const gap = select(kalshi, preset(kalshi, 'all'), dashboardCategories, 'week')
-    expect(gap.points.find((point) => point.day === '2026-03-16')).toMatchObject({ kalshi: 60, partial: true })
+    expect(gap.points.find((point) => point.day === '2026-03-16')).toMatchObject({ kalshi: 10, kalshiTotal: 60, partial: true, partialPlatforms: ['kalshi'] })
     expect(gap.points.every((point) => point.polymarket === null)).toBe(true)
-    expect(gap.points.some((point) => point.kalshi === 70)).toBe(true)
+    expect(gap.points.some((point) => point.kalshiTotal === 70)).toBe(true)
   })
 
   it('keeps partial weeks at both edges without inventing days outside the history', () => {
@@ -270,12 +289,23 @@ describe('volume dashboard selection', () => {
     const result = select(rows, preset(rows, 'all'), dashboardCategories, 'week')
     expect(result.granularity).toBe('week')
     expect(result.points).toHaveLength(27)
-    expect(result.points[0]).toEqual({ day: '2026-01-01', endDay: '2026-01-04', kalshi: 40, polymarket: null })
-    expect(result.points.at(-1)).toEqual({ day: '2026-06-29', endDay: '2026-06-30', kalshi: 20, polymarket: null, incompleteWeek: true })
+    expect(result.points[0]).toEqual({
+      day: '2026-01-01', endDay: '2026-01-04', kalshi: 10, polymarket: null, kalshiDays: 4, kalshiTotal: 40,
+    })
+    expect(result.points.at(-1)).toEqual({
+      day: '2026-06-29',
+      endDay: '2026-06-30',
+      kalshi: 10,
+      polymarket: null,
+      kalshiDays: 2,
+      kalshiTotal: 20,
+      incompleteWeek: true,
+      partialPlatforms: ['kalshi'],
+    })
     expect(result.points[0]?.incompleteWeek).toBeUndefined()
     expect(result.period).toEqual({ startDay: '2026-01-01', endDay: '2026-06-30' })
     const displayedTotal = rows.filter((item) => result.period && item.day >= result.period.startDay && item.day <= result.period.endDay).reduce((total, item) => total + item.volumeUsd, 0)
-    expect(result.points.reduce((total, point) => total + (point.kalshi ?? 0), 0)).toBe(displayedTotal)
+    expect(result.points.reduce((total, point) => total + (point.kalshiTotal ?? 0), 0)).toBe(displayedTotal)
     expect(displayedTotal).toBe(1810)
   })
 
@@ -290,7 +320,7 @@ describe('volume dashboard selection', () => {
     const result = select(rows, preset(rows, 'all'), dashboardCategories, 'week')
     expect(result.points).toHaveLength(26)
     expect(result.period).toEqual({ startDay: '2026-01-05', endDay: '2026-07-05' })
-    expect(result.points.reduce((total, point) => total + (point.kalshi ?? 0), 0)).toBe(1820)
+    expect(result.points.reduce((total, point) => total + (point.kalshiTotal ?? 0), 0)).toBe(1820)
   })
 
   it('uses the same weekly period with category filters and with no categories selected', () => {
@@ -327,11 +357,20 @@ describe('volume dashboard selection', () => {
     expect(breakdown.rows[0]?.total).toBe(selection.points.reduce((sum, point) => sum + (point.kalshi ?? 0), 0))
   })
 
-  it('keeps a known weekly platform sum and marks it partial when a day is missing', () => {
+  it('keeps a known weekly platform average and marks it partial when a day is missing', () => {
     const rows = history('2026-01-01', 181).filter((item) => item.day !== '2026-01-07')
     rows.push(...history('2026-01-01', 181).map((item) => ({ ...item, platform: 'polymarket' } satisfies DashboardVolumeRow)))
     const week = select(rows, preset(rows, 'all'), dashboardCategories, 'week').points.find((point) => point.day === '2026-01-05')
-    expect(week).toMatchObject({ kalshi: 60, polymarket: 70, partial: true, partialPlatforms: ['kalshi'] })
+    expect(week).toMatchObject({
+      kalshi: 10,
+      polymarket: 10,
+      kalshiDays: 6,
+      polymarketDays: 7,
+      kalshiTotal: 60,
+      polymarketTotal: 70,
+      partial: true,
+      partialPlatforms: ['kalshi'],
+    })
   })
 
   it('keeps sparse trailing weeks instead of dropping them when mid-week days are missing', () => {
@@ -339,8 +378,30 @@ describe('volume dashboard selection', () => {
     const rows = days.flatMap((day) => [row(day, 'kalshi', 10), row(day, 'polymarket', 5)])
     const result = select(rows, preset(rows, 'all'), dashboardCategories, 'week')
     expect(result.points).toEqual([
-      { day: '2026-09-28', endDay: '2026-10-04', kalshi: 40, polymarket: 20, partial: true, partialPlatforms: ['kalshi', 'polymarket'] },
-      { day: '2026-10-05', endDay: '2026-10-05', kalshi: 10, polymarket: 5, incompleteWeek: true },
+      {
+        day: '2026-09-28',
+        endDay: '2026-10-04',
+        kalshi: 10,
+        polymarket: 5,
+        kalshiDays: 4,
+        polymarketDays: 4,
+        kalshiTotal: 40,
+        polymarketTotal: 20,
+        partial: true,
+        partialPlatforms: ['kalshi', 'polymarket'],
+      },
+      {
+        day: '2026-10-05',
+        endDay: '2026-10-05',
+        kalshi: 10,
+        polymarket: 5,
+        kalshiDays: 1,
+        polymarketDays: 1,
+        kalshiTotal: 10,
+        polymarketTotal: 5,
+        incompleteWeek: true,
+        partialPlatforms: ['kalshi', 'polymarket'],
+      },
     ])
   })
 })
