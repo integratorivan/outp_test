@@ -174,13 +174,18 @@ export default function ChartAnalysisPanel({ context, onClose }: ChartAnalysisPa
                   </Alert>
                 )}
 
-                {mutation.isError && !draft?.answer && (
+                {mutation.isError && !draft?.answer && !mutationErrorMessage && (
                   <div className="flex flex-col gap-3">
                     <p className="text-sm text-muted-foreground">Не удалось найти событие для этого периода.</p>
                     <Button variant="outline" size="sm" className="self-start" onClick={ask}>
                       Повторить
                     </Button>
                   </div>
+                )}
+                {mutation.isError && !draft?.answer && mutationErrorMessage && (
+                  <Button variant="outline" size="sm" className="self-start" onClick={ask}>
+                    Повторить
+                  </Button>
                 )}
               </div>
             </ScrollArea>

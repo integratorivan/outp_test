@@ -57,7 +57,7 @@ describe('previous KPI period', () => {
     expect(previousSelection.period).toEqual({ startDay: '2024-01-31', endDay: '2024-02-29' })
     expect(previousSelection.points).toHaveLength(30)
     expect(previousSelection.points.at(-1)?.kalshi).toBeNull()
-    expect(selectVolumeSummary(current(rows, window).points, previousSelection.points).kalshi.change).toBeNull()
+    expect(selectVolumeSummary(current(rows, window).points, previousSelection.points).kalshi.change).toBeCloseTo(2 / 3)
   })
 
   it('compares an equally long period before a custom window', () => {

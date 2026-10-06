@@ -1,5 +1,7 @@
 # Project guidance
 
+Canonical agent rules for this repo. Human-oriented overview: [README.md](README.md). Expanded copy: [docs/agents.md](docs/agents.md).
+
 ## State and data
 
 - Use TanStack Query for server data with the shared client in `src/shared/query-client.ts`. Include all request parameters in query keys and pass the query signal to fetch. Keep previous chart data during parameter changes with `keepPreviousData`.

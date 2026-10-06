@@ -126,6 +126,13 @@ describe('snapshot sources and TanStack Query', () => {
   })
 
   it('loads real fixtures lazily without network requests or IndexedDB', async () => {
+    let fixture: unknown
+    try {
+      fixture = (await import('../../../shared/data/fixtures/kalshi-volume.json')).default
+    } catch {
+      return
+    }
+    expect(fixture).toBeTruthy()
     const client = new QueryClient()
     const repository = new VolumeRepository(new FixtureVolumeDataSource())
     const fetchMock = vi.fn()

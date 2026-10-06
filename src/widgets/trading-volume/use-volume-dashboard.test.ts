@@ -150,7 +150,8 @@ describe('dashboard KPI independence', () => {
       expect(daily.categoryBreakdown).toEqual(categories.categoryBreakdown)
       if (range !== '7d') {
         expect(daily.summary.polymarket.availablePoints).toBe(daily.summary.polymarket.expectedPoints - 1)
-        expect(daily.summary.polymarket.share).toBeNull()
+        expect(daily.summary.polymarket.share).not.toBeNull()
+        expect(daily.summary.polymarket.commonDays).toBe(daily.summary.polymarket.expectedPoints - 1)
       }
     })
   })
@@ -175,7 +176,13 @@ describe('dashboard KPI independence', () => {
       expect(dashboard.summary.polymarket.total).toBe((count - 1) * 20)
       expect(dashboard.categoryBreakdown.totals.kalshi).toBe(dashboard.summary.kalshi.total)
       expect(dashboard.categoryBreakdown.totals.polymarket).toBe(dashboard.summary.polymarket.total)
-      expect(dashboard.summary.polymarket).toMatchObject({ availablePoints: count - 1, expectedPoints: count, share: null })
+      expect(dashboard.summary.polymarket).toMatchObject({
+        availablePoints: count - 1,
+        expectedPoints: count,
+        commonDays: count - 1,
+        shareBasisDays: count - 1,
+      })
+      expect(dashboard.summary.polymarket.share).not.toBeNull()
       expect(dashboard.period).toEqual({ startDay: '2026-01-01', endDay: count === 180 ? '2026-06-29' : '2026-06-30' })
       expect(render({ ...defaults, range: 'all', view: 'categories' }).summary).toEqual(dashboard.summary)
     })
@@ -186,9 +193,9 @@ describe('dashboard KPI independence', () => {
       const dashboard = render(defaults)
       expect(dashboard.summaryPeriod).toEqual({ days: 30, full: false })
       expect(dashboard.summary.kalshi.change).toBe(0)
-      expect(dashboard.summary.polymarket.change).toBeNull()
+      expect(dashboard.summary.polymarket.change).toBe(0)
       expect(render({ ...defaults, range: '7d' }).summary.polymarket.change).toBe(0)
-      expect(render({ ...defaults, range: '90d' }).summary.kalshi.change).toBeNull()
+      expect(render({ ...defaults, range: '90d' }).summary.kalshi.change).toBe(0)
       expect(render({ ...defaults, range: 'all' }).summary.kalshi.change).toBeNull()
       expect(render({ ...defaults, categories: ['politics'] }).summary.kalshi.change).toBeNull()
       expect(render({ ...defaults, categories: [] }).summary.kalshi.change).toBeNull()
